@@ -1,0 +1,4 @@
+1- cd to EasyMedicalImages
+2- run:
+
+python -B -m pytest "Test/test_reorient.py" --image-folder "W:\...\your_folder" -p no:cacheprovider
