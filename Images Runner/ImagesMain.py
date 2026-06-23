@@ -14,6 +14,9 @@ big_list = instance.return_slice(slice_number=(175, 279, 57), one_list=True, img
 
 slice_x, slice_y, slice_z = big_list
 
+# slice_x, slice_y, slice_z = instance.apply_seg_crop_to_slice(slice_number=(175, 279, 57))
+# instance.apply_seg_crop_to_image(slice_number=(175, 279, 57), img_or_seg='both')
+
 print(f"Returned slice X shape: {slice_x.shape}")
 print(f"Returned slice Y shape: {slice_y.shape}")
 print(f"Returned slice Z shape: {slice_z.shape}")
