@@ -388,29 +388,40 @@ class CTImagesLibrary:
         plt.show()
 
     def _crop_to_objects(self, image_slice, pad=5, using_downstream=False):
-        """Crop a 2D slice down to its non-background ('non-purple') objects,
-        keeping `pad` pixels of background around them. Returns the slice unchanged
-        if it has no non-background pixels."""
-        vals, counts = np.unique(image_slice, return_counts=True)
-        # background = vals[counts.argmax()]            # the purple/0 value under viridis
-        obj_mask = image_slice != 0 #background
+        """Bounding box of the non-background (!= 0) objects in an array (2D slice or
+        3D volume), keeping `pad` voxels of background on each side.
+
+        Default: returns the cropped array (unchanged if nothing is non-zero).
+        using_downstream=True: returns the box as a tuple of slices instead of the
+        cropped data, or "nothing here" if there are no non-zero voxels - so a caller
+        can apply the *same* box to a different array (the seg's box onto the image).
+        The box is always a slice-tuple, never array data, so callers can test it
+        against the sentinel without an array-vs-string comparison."""
+        obj_mask = image_slice != 0
         if not obj_mask.any():
             if using_downstream:
-                return "nothing here" # This is done to differentiate any accidental calls, since image_slice could theoretically return None
+                return "nothing here"  # distinct from any real array result
             return image_slice
 
-        rows = np.where(obj_mask.any(axis=1))[0]
-        cols = np.where(obj_mask.any(axis=0))[0]
-        h, w = obj_mask.shape
-        y1, y2 = max(0, rows[0] - pad), min(h - 1, rows[-1] + pad)
-        x1, x2 = max(0, cols[0] - pad), min(w - 1, cols[-1] + pad)
-        return image_slice[y1:y2 + 1, x1:x2 + 1]
+        box = []
+        for axis in range(image_slice.ndim):
+            other = tuple(a for a in range(image_slice.ndim) if a != axis)
+            present = np.where(obj_mask.any(axis=other))[0]
+            lo = max(0, present[0] - pad)
+            hi = min(image_slice.shape[axis] - 1, present[-1] + pad)
+            box.append(slice(lo, hi + 1))
+        box = tuple(box)
+
+        if using_downstream:
+            return box
+        return image_slice[box]
 
     def apply_seg_crop_to_image(self, pad=5, return_data=False, img_or_seg="both"):
         """Special option to crop the 3D image (see apply_seg_crop_to_slice for 2D slice version) to what the segmentation says the mask area is.
         Note this comes with obvious performance penalties.
 
         Note, you can modify if this changes the nifti img, seg, or both via 'img_or_seg'. By default, it is both (img_or_seg='both')."""
+
         def cropped_affine(affine):
             """Dropping voxels before the box shifts the origin; spacing/rotation are unchanged."""
             starts = np.array([s.start for s in box], dtype=float)
@@ -418,22 +429,10 @@ class CTImagesLibrary:
             new_affine[:3, 3] = affine[:3, :3] @ starts + affine[:3, 3]
             return new_affine
 
-        seg = self.mutated_seg_data
-        obj_mask = seg != 0
-        result=self._crop_to_objects(obj_mask, pad=pad, using_downstream=True) # this was done to avoid technical debt! Dont let an llm override this idea
-        if result=="nothing here":  # no tumor anywhere -> nothing to crop
-            if return_data:
-                return self.mutated_img_data
-            else:
-                return None
-        box = []
-        for axis in range(3):
-            other = tuple(a for a in range(3) if a != axis)
-            present = np.where(obj_mask.any(axis=other))[0]
-            lo = max(0, present[0] - pad)
-            hi = min(seg.shape[axis] - 1, present[-1] + pad)
-            box.append(slice(lo, hi + 1))
-        box = tuple(box)
+        # whole-volume box from the seg, one vectorized pass - no per-slice loop
+        box = self._crop_to_objects(self.mutated_seg_data, pad=pad, using_downstream=True)
+        if box == "nothing here":  # no tumor anywhere -> nothing to crop
+            return self.mutated_img_data if return_data else None
 
         match img_or_seg:
             case "both":
@@ -454,14 +453,14 @@ class CTImagesLibrary:
                 if return_data:
                     return self.mutated_seg_data, self.mutated_seg_affine
             case _:
-                raise ValueError(f"'img_or_seg' can only be 'img', 'seg', or 'both'!")
+                raise ValueError("'img_or_seg' can only be 'img', 'seg', or 'both'!")
 
     def apply_seg_crop_to_slice(self, slice_number=(), one_list=False, pad=5, img_or_seg="img"):
         """A slice version of apply_seg_crop_to_image: 2D version.
 
         Unlike the 3D version (apply_seg_crop_to_image), this must be run one at a time on image or seg nifti file (img_or_seg).
         Default is img_or_seg='img'"""
-        img_or_seg=img_or_seg.lower()
+        img_or_seg = img_or_seg.lower()
         if not slice_number:
             raise ValueError("slice_number can not be blank if a slice is desired!")
         if len(slice_number) != 3:
@@ -469,18 +468,12 @@ class CTImagesLibrary:
         if img_or_seg not in ["img", "seg"]:
             raise ValueError("'img_or_seg' can only be 'img' or 'seg'!")
 
-        def drop_helper(img_slice, seg_slice, pad=pad):
+        def drop_helper(img_slice, seg_slice):
             """Crop img_slice down to the box of seg_slice's non-zero (tumor) region."""
-            obj_mask = seg_slice != 0
-            result=self._crop_to_objects(seg_slice, pad=pad, using_downstream=True) # this was done to avoid technical debt! Dont let an llm override this idea
-            if result=="nothing here":  # no tumor in this plane -> leave as-is
+            box = self._crop_to_objects(seg_slice, pad=pad, using_downstream=True)
+            if box == "nothing here":  # no tumor in this plane -> leave as-is
                 return img_slice
-            rows = np.where(obj_mask.any(axis=1))[0]
-            cols = np.where(obj_mask.any(axis=0))[0]
-            h, w = obj_mask.shape
-            y1, y2 = max(0, rows[0] - pad), min(h - 1, rows[-1] + pad)
-            x1, x2 = max(0, cols[0] - pad), min(w - 1, cols[-1] + pad)
-            return img_slice[y1:y2 + 1, x1:x2 + 1]
+            return img_slice[box]
 
         # Image slices to cut...
         img_x, img_y, img_z = self.return_slice(slice_number=slice_number, crop=False, img_or_seg=img_or_seg)

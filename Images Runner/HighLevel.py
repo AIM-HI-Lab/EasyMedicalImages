@@ -6,8 +6,6 @@ import numpy as np
 
 class HighLevel(MRIImagesLibrary, CTImagesLibrary):
     def __init__(self, path_to_folder, image_path="image.nii.gz", seg_path="tumor_segmentation_v2.nii.gz", verbose=False):
-        # MRIImagesLibrary.__init__(self, path_to_folder, image_path, seg_path, verbose) # Sends the inital perameters to both classes!
-        # CTImagesLibrary.__init__(self, path_to_folder, image_path, seg_path, verbose)
         self.path_to_folder = path_to_folder
         self.hl_img_path = image_path
         self.hl_seg_path = seg_path
