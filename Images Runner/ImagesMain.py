@@ -8,19 +8,24 @@ print(f"Data shape: {instance.raw_img_data.shape}\n"); print(f"Mutated data shap
 print(f"Seg shape: {instance.raw_seg_data.shape}\n"); print(f"Mutated seg shape: {instance.mutated_seg_data.shape}\n")
 print(f"Affine matrix: \n{instance.raw_img_affine}\n"); print(f"Mutated affine matrix: \n{instance.mutated_img_affine}\n")
 
-big_list = instance.return_slice(slice_number=(175, 279, 110), one_list=True, img_or_seg="seg", crop=True)
+# big_list = instance.return_slice(slice_number=(175, 279, 110), one_list=True, img_or_seg="img", crop=True)
 
-slice_x, slice_y, slice_z = big_list
-print(f"Slice X shape: {slice_x.shape}")
-print(f"Slice Y shape: {slice_y.shape}")
-print(f"Slice Z shape: {slice_z.shape}")
+# slice_x, slice_y, slice_z = big_list
+
+slice_x, slice_y, slice_z = instance.apply_seg_crop_to_slice(slice_number=(175, 279, 57))
+# instance.apply_seg_crop_to_image(slice_number=(175, 279, 57), img_or_seg='both')
+
+print(f"Returned slice X shape: {slice_x.shape}")
+print(f"Returned slice Y shape: {slice_y.shape}")
+print(f"Returned slice Z shape: {slice_z.shape}")
 
 mutated_list=instance.mutated_img_data
 print(mutated_list.shape)
 
 # 175, 279, 110
 # 100, 22, 44
-instance.display_slice(slice_number=(175, 279, 110), img_or_seg="seg", crop=True)
+
+instance.display_slice(slice_number=(175, 279, 57), img_or_seg="seg", crop=True)
 
 import nibabel as nib
 print(nib.aff2axcodes(instance.raw_img_affine))      # e.g. ('L','P','S')

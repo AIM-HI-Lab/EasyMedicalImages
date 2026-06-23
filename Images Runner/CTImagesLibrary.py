@@ -387,7 +387,7 @@ class CTImagesLibrary:
         )
         plt.show()
 
-    def _crop_to_objects(self, image_slice, pad=5):
+    def _crop_to_objects(self, image_slice, pad=5, using_downstream=False):
         """Crop a 2D slice down to its non-background ('non-purple') objects,
         keeping `pad` pixels of background around them. Returns the slice unchanged
         if it has no non-background pixels."""
@@ -395,6 +395,8 @@ class CTImagesLibrary:
         # background = vals[counts.argmax()]            # the purple/0 value under viridis
         obj_mask = image_slice != 0 #background
         if not obj_mask.any():
+            if using_downstream:
+                return "nothing here" # This is done to differentiate any accidental calls, since image_slice could theoretically return None
             return image_slice
 
         rows = np.where(obj_mask.any(axis=1))[0]
@@ -403,6 +405,96 @@ class CTImagesLibrary:
         y1, y2 = max(0, rows[0] - pad), min(h - 1, rows[-1] + pad)
         x1, x2 = max(0, cols[0] - pad), min(w - 1, cols[-1] + pad)
         return image_slice[y1:y2 + 1, x1:x2 + 1]
+
+    def apply_seg_crop_to_image(self, pad=5, return_data=False, img_or_seg="both"):
+        """Special option to crop the 3D image (see apply_seg_crop_to_slice for 2D slice version) to what the segmentation says the mask area is.
+        Note this comes with obvious performance penalties.
+
+        Note, you can modify if this changes the nifti img, seg, or both via 'img_or_seg'. By default, it is both (img_or_seg='both')."""
+        def cropped_affine(affine):
+            """Dropping voxels before the box shifts the origin; spacing/rotation are unchanged."""
+            starts = np.array([s.start for s in box], dtype=float)
+            new_affine = affine.copy()
+            new_affine[:3, 3] = affine[:3, :3] @ starts + affine[:3, 3]
+            return new_affine
+
+        seg = self.mutated_seg_data
+        obj_mask = seg != 0
+        result=self._crop_to_objects(obj_mask, pad=pad, using_downstream=True) # this was done to avoid technical debt! Dont let an llm override this idea
+        if result=="nothing here":  # no tumor anywhere -> nothing to crop
+            if return_data:
+                return self.mutated_img_data
+            else:
+                return None
+        box = []
+        for axis in range(3):
+            other = tuple(a for a in range(3) if a != axis)
+            present = np.where(obj_mask.any(axis=other))[0]
+            lo = max(0, present[0] - pad)
+            hi = min(seg.shape[axis] - 1, present[-1] + pad)
+            box.append(slice(lo, hi + 1))
+        box = tuple(box)
+
+        match img_or_seg:
+            case "both":
+                self.mutated_img_data = self.mutated_img_data[box].copy()
+                self.mutated_img_affine = cropped_affine(self.mutated_img_affine)
+                self.mutated_seg_data = self.mutated_seg_data[box].copy()
+                self.mutated_seg_affine = cropped_affine(self.mutated_seg_affine)
+                if return_data:
+                    return self.mutated_img_data, self.mutated_img_affine, self.mutated_seg_data, self.mutated_seg_affine
+            case "img":
+                self.mutated_img_data = self.mutated_img_data[box].copy()
+                self.mutated_img_affine = cropped_affine(self.mutated_img_affine)
+                if return_data:
+                    return self.mutated_img_data, self.mutated_img_affine
+            case "seg":
+                self.mutated_seg_data = self.mutated_seg_data[box].copy()
+                self.mutated_seg_affine = cropped_affine(self.mutated_seg_affine)
+                if return_data:
+                    return self.mutated_seg_data, self.mutated_seg_affine
+            case _:
+                raise ValueError(f"'img_or_seg' can only be 'img', 'seg', or 'both'!")
+
+    def apply_seg_crop_to_slice(self, slice_number=(), one_list=False, pad=5, img_or_seg="img"):
+        """A slice version of apply_seg_crop_to_image: 2D version.
+
+        Unlike the 3D version (apply_seg_crop_to_image), this must be run one at a time on image or seg nifti file (img_or_seg).
+        Default is img_or_seg='img'"""
+        img_or_seg=img_or_seg.lower()
+        if not slice_number:
+            raise ValueError("slice_number can not be blank if a slice is desired!")
+        if len(slice_number) != 3:
+            raise ValueError("slice_number must have exactly 3 values, one per axis: (X, Y, Z)")
+        if img_or_seg not in ["img", "seg"]:
+            raise ValueError("'img_or_seg' can only be 'img' or 'seg'!")
+
+        def drop_helper(img_slice, seg_slice, pad=pad):
+            """Crop img_slice down to the box of seg_slice's non-zero (tumor) region."""
+            obj_mask = seg_slice != 0
+            result=self._crop_to_objects(seg_slice, pad=pad, using_downstream=True) # this was done to avoid technical debt! Dont let an llm override this idea
+            if result=="nothing here":  # no tumor in this plane -> leave as-is
+                return img_slice
+            rows = np.where(obj_mask.any(axis=1))[0]
+            cols = np.where(obj_mask.any(axis=0))[0]
+            h, w = obj_mask.shape
+            y1, y2 = max(0, rows[0] - pad), min(h - 1, rows[-1] + pad)
+            x1, x2 = max(0, cols[0] - pad), min(w - 1, cols[-1] + pad)
+            return img_slice[y1:y2 + 1, x1:x2 + 1]
+
+        # Image slices to cut...
+        img_x, img_y, img_z = self.return_slice(slice_number=slice_number, crop=False, img_or_seg=img_or_seg)
+        # ...and the seg slices whose box does the cutting (uncropped, so we know *where* the box is).
+        seg_x, seg_y, seg_z = self.return_slice(slice_number=slice_number, crop=False, img_or_seg="seg")
+
+        new_img_x = drop_helper(img_x, seg_x)
+        new_img_y = drop_helper(img_y, seg_y)
+        new_img_z = drop_helper(img_z, seg_z)
+
+        if one_list:
+            return [new_img_x, new_img_y, new_img_z]
+        else:
+            return new_img_x, new_img_y, new_img_z
 
     def return_slice(self, slice_number=(), view_axes=("X", "Y", "Z"), load_mutated=True, is_mask=False, one_list=False, crop=False, pad=5, report_affine=True, img_or_seg="img"):
         """Return a slice of the image from the given path as an array.
