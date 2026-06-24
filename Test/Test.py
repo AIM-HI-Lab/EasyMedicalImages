@@ -19,7 +19,7 @@ import nibabel as nib
 
 _IMAGES_RUNNER = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "Images Runner",
+    "ImagesRunner",
 )
 sys.path.insert(0, _IMAGES_RUNNER)
 from CTImagesLibrary import CTImagesLibrary as il  # noqa: E402  (after sys.path tweak)

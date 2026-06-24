@@ -3,14 +3,14 @@ Pytest checks for the RAS reorientation done in CTImagesLibrary._mutate_image.
 
 Layout this expects:
     EasyMedicalImages/
-        Images Runner/
+        ImagesRunner/
             CTImagesLibrary.py    <- the library
         Test/
             conftest.py           <- adds the --image-folder flag (keep it lowercase)
             test_reorient.py      <- this file (keep it lowercase, no spaces)
 
 This file lives in EasyMedicalImages/Test/ while CTImagesLibrary.py lives in
-Images Runner/. The sys.path line below makes the import resolve no matter
+ImagesRunner/. The sys.path line below makes the import resolve no matter
 where you launch pytest from.
 
 Run it (from the EasyMedicalImages project root, or from inside Test/):
@@ -39,10 +39,10 @@ import numpy as np
 import nibabel as nib
 import pytest
 
-# CTImagesLibrary.py lives in Images Runner/; make it importable from Test/.
+# CTImagesLibrary.py lives in ImagesRunner/; make it importable from Test/.
 _IMAGES_RUNNER = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "Images Runner",
+    "ImagesRunner",
 )
 sys.path.insert(0, _IMAGES_RUNNER)
 from CTImagesLibrary import CTImagesLibrary as il  # noqa: E402  (after sys.path tweak)
