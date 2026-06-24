@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easy-medical-images"
+version = "0.0.1a1"
+description = "The easy way to manipulate medical images."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Nathan Honn" }]
+dependencies = [
+    "numpy>=2.2",
+    "nibabel>=5.4.2",
+    "scipy>=1.17.1",
+    "matplotlib>=3.10.9"
+    # add anything else your imports use, e.g. "scipy", "pydicom"
+]
+
+[tool.setuptools.packages.find]
+include = ["EasyMedicalImages*"]
