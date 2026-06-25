@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "easy-medical-images"
-version = "0.0.1a4"
+version = "0.0.1a5"
 description = "The easy way to manipulate medical images."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "AIM-HI-LAB" }]
 dependencies = [
-    "numpy>=2.2",
+    "numpy>=2.4.6",
     "nibabel>=5.4.2",
     "nilearn>=0.13.1",
     "scipy>=1.17.1",

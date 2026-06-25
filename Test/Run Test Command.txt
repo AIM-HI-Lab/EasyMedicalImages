@@ -2,3 +2,12 @@
 2- run:
 
 python -B -m pytest "Test/test_reorient.py" --image-folder "W:\...\your_folder" -p no:cacheprovider
+
+To update the PyPI, make a special github push:
+
+After you push normally, do the following:
+
+1- git tag v0.0.1a5
+2- git push origin v0.0.1a5
+
+Remember to change the verison in pyproject.toml!
