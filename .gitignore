@@ -6,6 +6,21 @@ __pycache__/
 # C extensions
 *.so
 
+# Medical image data — never commit patient scans
+*.nii
+*.nii.gz
+*.dcm
+*.mha
+*.nrrd
+# plus any local data/sample dirs, e.g.:
+# data/
+# samples/
+
+# Windows
+[Tt]humbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
 # Distribution / packaging
 .Python
 build/

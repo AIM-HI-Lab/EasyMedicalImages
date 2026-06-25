@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-class ThreeDImagesDisplayLibrary:
+class ImagesDisplayLibrary:
     def __init__(self):
         pass
 

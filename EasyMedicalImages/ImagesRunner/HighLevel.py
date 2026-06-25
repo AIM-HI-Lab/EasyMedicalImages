@@ -1,6 +1,6 @@
 import os
-from MRIImagesLibrary import MRIImagesLibrary
-from CTImagesLibrary import CTImagesLibrary
+from EasyMedicalImages.ImagesRunner.MRIImagesLibrary import MRIImagesLibrary
+from EasyMedicalImages.ImagesRunner.CTImagesLibrary import CTImagesLibrary
 from pathlib import Path
 import numpy as np
 

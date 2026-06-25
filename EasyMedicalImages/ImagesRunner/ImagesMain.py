@@ -1,4 +1,4 @@
-from CTImagesLibrary import CTImagesLibrary as il
+from EasyMedicalImages.ImagesRunner.CTImagesLibrary import CTImagesLibrary as il
 import numpy as np
 
 input_path = input("Enter the path to the image folder: ")
