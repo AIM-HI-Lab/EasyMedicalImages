@@ -3,11 +3,22 @@
 
 python -B -m pytest "Test/test_reorient.py" --image-folder "W:\...\your_folder" -p no:cacheprovider
 
+To build a new version:
+```
+python -m venv $env:TEMP\emi-test
+$py = "$env:TEMP\emi-test\Scripts\python.exe"
+& $py -m pip install (Get-ChildItem dist\*.whl).FullName
+cd $env:TEMP
+& $py -c "import EasyMedicalImages; print('ok:', EasyMedicalImages.__file__)"
+```
+
 To update the PyPI, make a special github push:
 
 After you push normally, do the following:
 
-1- git tag v0.0.1a5
-2- git push origin v0.0.1a5
+```
+git tag v0.0.1a5
+git push origin v0.0.1a5
+```
 
 Remember to change the verison in pyproject.toml!
