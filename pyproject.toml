@@ -13,10 +13,12 @@ authors = [{ name = "Nathan Honn" }]
 dependencies = [
     "numpy>=2.2",
     "nibabel>=5.4.2",
+    "nilearn>=0.13.1",
     "scipy>=1.17.1",
     "matplotlib>=3.10.9",
-    "nilearn>=0.13.1",
-    "pydicom>=3.0.2"
+    "pydicom>=3.0.2",
+    "tqdm>=4.67.3",
+    "SimpleITK>=2.5.5"
     # add anything else your imports use, e.g. "scipy", "pydicom"
 ]
 
