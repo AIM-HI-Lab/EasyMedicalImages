@@ -15,6 +15,8 @@ class HighLevel(MRIImagesLibrary, CTImagesLibrary):
     def run_on_directory(self, directory_path=None):
         if directory_path is None:
             directory_path = self.path_to_folder
+        elif isinstance(directory_path, str):
+            pass
         else:
             raise ValueError("No directory path provided")
 
@@ -51,6 +53,7 @@ class HighLevel(MRIImagesLibrary, CTImagesLibrary):
                             verbose=False,
                         )
                         print(f"Image shape: {image_pair_instance.mutated_img_data.shape}")
+                        print(f"Type: {type(image_pair_instance.mutated_img_data)}")
                         print(f"Seg shape:   {image_pair_instance.mutated_seg_data.shape}")
                         self.img_seg_pairs.append((image_pair_instance.mutated_img_data, image_pair_instance.mutated_seg_data))
                         print(f"Amazing sucess! ")

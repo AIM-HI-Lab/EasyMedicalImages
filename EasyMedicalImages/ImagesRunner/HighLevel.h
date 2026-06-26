@@ -13,6 +13,7 @@
 
 #include <string>
 #include <vector>
+#include <variant>
 
 // ---------------------------------------------------------------------------
 // Translation of HighLevel.py.
@@ -36,23 +37,21 @@
 
 class HighLevel {
 public:
-    explicit HighLevel(std::string path_to_folder,
-                       std::string image_path = "image.nii.gz",
-                       std::string seg_path   = "tumor_segmentation_v2.nii.gz",
-                       bool verbose = false);
+    std::vector<std::variant<int, double, std::string>> img_seg_pairs;
+    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false);
 
     // directory_path defaults to "" to mirror Python's None sentinel.
     void run_on_directory(const std::string& directory_path = "");
 
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
-    // options is one of "folders", "files", "all".
-    std::vector<std::string> _go_one_level_deep(bool debug = false,
-                                                std::string options = "folders");
+    // options is one of "folders", "files", "all". A non-empty directory_path
+    // overrides the path_to_folder member for this one call (it isn't stored).
+    std::vector<std::string> _go_one_level_deep(bool debug = false,std::string options = "folders",const std::string& directory_path = "");
 
     // Intentionally left blank, per request.
-    void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,
-                                            bool return_affines = false,
-                                            bool debug = false);
+    void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,bool return_affines = false,bool debug = false);
+
+    int how_many_threads_available(bool debug = true);
 
 private:
     std::string path_to_folder;
