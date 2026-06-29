@@ -5,9 +5,6 @@ from nibabel.affines import rescale_affine
 import numpy as np
 from pathlib import Path
 import platform
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
-from nilearn import plotting
 from scipy.ndimage import zoom
 
 class CTImagesLibrary:
@@ -20,8 +17,9 @@ class CTImagesLibrary:
     Nothing in this library will (or should ever) save. Everything is designed to be loaded, manipulated, or displayed to another program.
     """
 
-    def __init__(self, path_to_folder, image_path="image.nii.gz", seg_path="tumor_segmentation_v2.nii.gz", verbose=True):
+    def __init__(self, path_to_folder, image_path="image.nii.gz", seg_path="tumor_segmentation_v2.nii.gz", verbose=True, return_affines=False):
         self.raw_image_path = image_path
+        self.return_affines = return_affines
         self.raw_seg_path = seg_path
         self.path_to_folder = path_to_folder
         self.raw_img_data = None
@@ -63,23 +61,39 @@ class CTImagesLibrary:
 
         return self.raw_img_data, self.raw_seg_data
 
-    def _what_os_is_running(self, path):
+    @staticmethod
+    def what_os_is_running(path, returnOS=False, verbose=False):
         """Convert a path to use the separator of the OS we're running on.
         This brings, peace, freedom, and security to our new empire."""
         system = platform.system()
         match system:
             case "Windows":
-                print("Running on Windows") if self.verbose else None
-                return path.replace("/", "\\")
+                print("Running on Windows") if verbose else None
+                if not returnOS:
+                    return path.replace("/", "\\")
+                else:
+                    path=path.replace("/", "\\")
+                    return system, path
             case "Linux":
-                print("Running on Linux") if self.verbose else None
-                return path.replace("\\", "/")
+                print("Running on Linux") if verbose else None
+                if not returnOS:
+                    return path.replace("\\", "/")
+                else:
+                    path=path.replace("\\", "/")
+                    return system, path
             case "Darwin":
-                print("Running on macOS") if self.verbose else None
-                return path.replace("\\", "/")
+                print("Running on macOS") if verbose else None
+                if not returnOS:
+                    return path.replace("\\", "/")
+                else:
+                    path=path.replace("\\", "/")
+                    return system, path
             case _:
-                print(f"Unknown OS: {system}") if self.verbose else None
-                return path
+                print(f"Unknown OS: {system}") if verbose else None
+                if not returnOS:
+                    return path
+                else:
+                    return system, path
 
     def jump_to_folder(self, subpath=""):
         """Jump to a folder, accepting either an absolute or relative path.
@@ -91,7 +105,7 @@ class CTImagesLibrary:
         Changes the working directory to the target and returns it.
         """
         anchor = "AIM-HI-Lab"
-        subpath = self._what_os_is_running(str(subpath))
+        subpath = self.what_os_is_running(str(subpath), verbose=self.verbose)
         subpath = Path(subpath)
 
         # If the pasted path already contains AIM-HI-Lab (e.g. a full path
@@ -311,6 +325,8 @@ class CTImagesLibrary:
         so each axis can be shown at a different slice.
         if load_mutated = True -> load the mutated data and affine. On by default.
         """
+        import matplotlib.pyplot as plt
+
         view_axes = tuple(axis.upper() for axis in view_axes)
         match img_or_seg.lower():
             case "img":
@@ -613,5 +629,7 @@ class CTImagesLibrary:
         Returns a nilearn ``HTMLDocument``; in a notebook it renders inline,
         otherwise call ``.open_in_browser()`` on the returned object.
         """
-        image_path = self._what_os_is_running(str(self.raw_image_path))
+        from nilearn import plotting
+
+        image_path = self.what_os_is_running(str(self.raw_image_path), verbose=self.verbose)
         return plotting.view_img(image_path, title=title, bg_img=bg_img, **kwargs)

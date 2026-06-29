@@ -13,8 +13,12 @@
 
 #include <string>
 #include <vector>
-#include <variant>
+#include <cstdint>
+#include <utility>
+#include <array>
 
+// Yes, the comment below was AI generated while I was using it to help some language translation.
+// No, it should not be gotten rid of because it contains good information for future development.
 // ---------------------------------------------------------------------------
 // Translation of HighLevel.py.
 //
@@ -35,32 +39,44 @@
 // (i.e. composition). So this is a standalone class that does the same thing.
 // ---------------------------------------------------------------------------
 
+struct Volume {
+    std::vector<int64_t> shape;  // e.g. {Z, Y, X}, C-order
+    std::vector<float>   data;   // flattened
+    std::array<double, 16>  affine{};// 4x4 row-major; all-zero unless affines were requested
+};
+
 class HighLevel {
 public:
-    std::vector<std::variant<int, double, std::string>> img_seg_pairs;
-    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false);
+    // One (image, seg) pair per case. pair, NOT variant: each case holds BOTH
+    // volumes together, not one-or-the-other. (variant<Volume, Volume> is also
+    // degenerate -- two identical alternatives you couldn't tell apart.)
+    std::vector<std::pair<Volume, Volume>> img_seg_pairs;
 
-    // directory_path defaults to "" to mirror Python's None sentinel.
-    void run_on_directory(const std::string& directory_path = "");
+    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=66);
+
+    // Runs the whole fan-out and hands back the collected (image, seg) pairs by
+    // value -- moved out of img_seg_pairs, so the member is left empty after the
+    // call (this vector can be huge; we don't want to copy it). directory_path
+    // defaults to "" to mirror Python's None sentinel.
+    std::vector<std::pair<Volume, Volume>> run_on_directory(const std::string& directory_path = "");
 
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
     // options is one of "folders", "files", "all". A non-empty directory_path
     // overrides the path_to_folder member for this one call (it isn't stored).
     std::vector<std::string> _go_one_level_deep(bool debug = false,std::string options = "folders",const std::string& directory_path = "");
 
-    // Intentionally left blank, per request.
+    // Fans out one CTImagesLibrary subprocess per case across a thread pool,
+    // reads each result back over a pipe (no disk), and collects the (image,
+    // seg) pairs into img_seg_pairs.
     void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,bool return_affines = false,bool debug = false);
 
     int how_many_threads_available(bool debug = true);
+
+    float thread_deadline_time = 66.0f;
 
 private:
     std::string path_to_folder;
     std::string hl_img_path;
     std::string hl_seg_path;
     bool verbose;
-
-    // Populated by _get_all_images_and_segs_from_path (currently a stub).
-    // The element type should mirror CTImagesLibrary's in-memory volume type
-    // (the C++ analogue of the NumPy arrays on the Python side), e.g.:
-    //   std::vector<std::pair<Volume, Volume>> img_seg_pairs;
 };
