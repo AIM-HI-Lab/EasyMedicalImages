@@ -34,3 +34,12 @@ editable.verbose = true
 
 [tool.scikit-build.cmake]
 args = ["-G", "Ninja"]
+
+[tool.cibuildwheel]
+build = ["cp312-*", "cp313-*", "cp314-*"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
