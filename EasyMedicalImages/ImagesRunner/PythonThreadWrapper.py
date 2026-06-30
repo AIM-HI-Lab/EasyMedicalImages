@@ -11,14 +11,15 @@ def load_case(folder_path, image_path, seg_path, return_affine=False):
     else:
         return ct.mutated_img_data, ct.mutated_seg_data, ct.mutated_img_affine, ct.mutated_seg_affine
 
-def _write_volume(stream, arr):
-    # Layout (must match read_volume() in HighLevel.cpp byte-for-byte):
-    #   int32 ndim | int64 shape[ndim] | float32 data[prod(shape)]
-    # Explicit little-endian, C-order. (x86 on both ends, so it's also native.)
+def _write_volume(stream, arr, affine=None):
+    # int32 ndim | int64 shape[ndim] | float32 data[...] | [ float64 affine[16] ]
     arr = np.ascontiguousarray(arr, dtype="<f4")
     stream.write(np.asarray(arr.ndim,  dtype="<i4").tobytes())
     stream.write(np.asarray(arr.shape, dtype="<i8").tobytes())
     stream.write(arr.tobytes())
+    if affine is not None:
+        aff = np.ascontiguousarray(affine, dtype="<f8").reshape(4, 4)  # row-major
+        stream.write(aff.tobytes())
 
 def main():
     p = argparse.ArgumentParser()
@@ -45,11 +46,17 @@ def main():
     # / close_pipe != 0). Mirrors Python's per-folder try/except.
     img, seg = load_case(args.folder, args.img, args.seg)
 
-    _write_volume(payload, img)
-    _write_volume(payload, seg)
     if args.return_affine:
-        aff = np.ascontiguousarray(affine, dtype="<f8")   # 4x4 row-major float64
-        sys.stdout.buffer.write(aff.tobytes())
+        img, seg, img_aff, seg_aff = load_case(
+            args.folder, args.img, args.seg, return_affine=True
+        )
+        _write_volume(payload, img, img_aff)
+        _write_volume(payload, seg, seg_aff)
+    else:
+        img, seg = load_case(args.folder, args.img, args.seg)
+        _write_volume(payload, img)
+        _write_volume(payload, seg)
+
     payload.flush()
 
 if __name__ == "__main__":

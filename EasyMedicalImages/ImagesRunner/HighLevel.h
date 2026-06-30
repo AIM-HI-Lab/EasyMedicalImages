@@ -74,6 +74,8 @@ public:
 
     float thread_deadline_time = 66.0f;
 
+    std::string python_exe;
+
 private:
     std::string path_to_folder;
     std::string hl_img_path;

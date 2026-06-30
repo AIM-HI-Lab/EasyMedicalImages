@@ -286,7 +286,7 @@ namespace {
 void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool debug) {
     const auto kLoadTimeout = std::chrono::duration<float>(this->thread_deadline_time);
     const int  hw   = how_many_threads_available(true);
-    const long want = std::lround(static_cast<double>(hw) * 0.60);
+    const long want = std::lround(static_cast<double>(hw) * 0.80);
     const size_t batch_size = static_cast<size_t>(std::max(1L, want)); // batch size is how many threads we are running, if your confused.
     std::cout << "Using up to " << batch_size << " concurrent worker(s)\n";
 
@@ -308,8 +308,12 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
                 // argv (not a shell string): posix_spawnp/CreateProcess take it
                 // directly, so paths with spaces need no quoting and SIGKILL
                 // runs on Python itself rather than a /bin/sh wrapper.
+                const std::string interp = this->python_exe.empty()
+                           ? std::string(kPythonCmd)
+                           : this->python_exe;
                 std::vector<std::string> argv = {
-                    std::string(kPythonCmd),
+                    interp, //std::string(kPythonCmd)
+                    "-P",
                     "-m", "EasyMedicalImages.ImagesRunner.PythonThreadWrapper",
                     "--folder", path_str,
                     "--img",    hl_img_path,
@@ -353,7 +357,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
 
                 if (r.ok && rc == 0) {
                     if (debug)
-                        std::cout << "Loaded " << path_str << "  img.ndim=" << r.img.shape.size() << "  seg.ndim=" << r.seg.shape.size() << '\n';
+                        std::cout << "Loaded " << path_str << "  img.ndim=" << r.img.shape.size() << "  seg.ndim=" << r.seg.shape.size() << '\n'<< '\n';
                     results[idx] = std::make_pair(std::move(r.img), std::move(r.seg));
                 } else {
                     std::cerr << "Python failed/unreadable for " << path_str << " (rc=" << rc << ")\n";
@@ -374,7 +378,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
     std::cout << "Collected " << img_seg_pairs.size() << " / " << all_data.size() << " cases\n";
 }
 
-int main() {
+int run_test() {
     std::cout << "Enter the path to the folder: ";
     std::string input_path;
     std::getline(std::cin, input_path);

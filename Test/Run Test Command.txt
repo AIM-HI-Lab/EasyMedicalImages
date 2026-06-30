@@ -3,6 +3,13 @@
 
 python -B -m pytest "Test/test_reorient.py" --image-folder "W:\...\your_folder" -p no:cacheprovider
 
+To build the wheels for a new version:
+```
+cd W:\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages
+Remove-Item -Recurse -Force build   # the failed configure left a stale cache
+pip install -e .
+```
+
 To build a new version:
 ```
 python -m venv $env:TEMP\emi-test
