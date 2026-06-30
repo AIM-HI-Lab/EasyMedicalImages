@@ -37,9 +37,13 @@ args = ["-G", "Ninja"]
 
 [tool.cibuildwheel]
 build = ["cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-musllinux*"]
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.15"

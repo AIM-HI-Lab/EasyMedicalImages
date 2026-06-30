@@ -40,5 +40,10 @@ After you push normally, do the following:
 git tag v0.0.2a4
 git push origin v0.0.2a4
 ```
+or
+```
+git tag -f v0.0.2a4          # move local tag onto your new commit
+git push origin v0.0.2a4 -f  # overwrite it on GitHub
+```
 
 Remember to change the verison in pyproject.toml!
