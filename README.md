@@ -1,21 +1,156 @@
 # EasyMedicalImages
 The easy way to manipulate medical images
 
-This is a library that focuses on taking CT scans and transforming them into arrays in python; giving the user easy ways to manipulate them as well. This can easily be used for downstream usage of CT images within a Python script.
+## Installation
+Requires Python 3.12 or newer.
 
-STILL DO NOT DOWNLOAD YET, WIP
-
-### Quick Start:
-```python
-import EasyMedicalImages as EMI
-path_to_folder_of_ct_scans=input("Input path to ct scans: ")
-instance=EMI.HighLevel(path_to_folder=path_to_folder_of_ct_scans)
-megadatalist=instance.run_on_directory()
-print(megadatalist) # This outputs all of the images in that directory as arrays!
+```bash
+pip install easy-medical-images
 ```
 
-## Tour of the Library
-### run_on_directory()
+The high-level batch loader (`HighLevel`) is a compiled C++ extension. The published wheels include it, so a normal `pip install` is all you need.
 
+## Expected data layout
+Each case lives in its own folder containing an image and a segmentation. By default these are named `image.nii.gz` and `tumor_segmentation_v2.nii.gz`, but you can override both names (see `image_path` and `seg_path` below).
+
+```
+parent_folder/
+├── case_0001/
+│   ├── image.nii.gz
+│   └── tumor_segmentation_v2.nii.gz
+├── case_0002/
+│   ├── image.nii.gz
+│   └── tumor_segmentation_v2.nii.gz
+└── ...
+```
+
+`CTImagesLibrary` operates on a single case folder. `HighLevel` operates on a parent folder and loads every case folder inside it.
+
+## How it fits together
+Generally, this library assumes the user wants a batch of something rather than a specific image. This is reflected in how you first load in your specific instance, and then can add modifiers how you wish.
+
+There are two main sub libraries:
+
+1. `HighLevel`: point it at a parent directory and it loads every case in parallel (after the method 'run_on_directory' is called on the instance). This will return a list of `(image, seg)` array pairs. Use this to pull a whole dataset into memory quickly.
+2. `CTImagesLibrary`: load one case and get the full manipulation toolkit (slicing, cropping, reorientation, display). Use this when you want to work with an individual scan.
+   See below for examples.
+
+## Quick start: load a whole directory
+```python
+import EasyMedicalImages as EMI
+ 
+path_to_folder_of_ct_scans = input("Input path to CT scans: ")
+instance = EMI.HighLevel(path_to_folder=path_to_folder_of_ct_scans)
+ 
+mega_data_list = instance.run_on_directory()  # list of (image, seg) array pairs
+# mega_data_list=[(img1, seg1),(img2, seg2)...]
+
+# Each entry is one case
+img, seg = mega_data_list[0]
+print(f"{len(mega_data_list)} cases loaded")
+print(f"First image shape: {img.shape}, seg shape: {seg.shape}")
+```
+
+Every entry in `mega_data_list` is a tuple of two NumPy `float32` arrays: the image and its segmentation. Both are already resampled to isotropic spacing and reoriented to RAS, so they are ready to use.
+
+## Working with a single case
+```python
+from EasyMedicalImages import CTImagesLibrary
+ 
+case = CTImagesLibrary(path_to_folder="path/to/one/case")
+ 
+# The voxels are automatically processed upon calling of the instance, unlike the batch version.
+print(case.mutated_img_data.shape)
+print(case.mutated_seg_data.shape)
+ 
+# Display three orthogonal slices (slice numbers are 1-based, ordered X, Y, Z)
+case.display_slice(slice_number=(175, 279, 57), img_or_seg="img")
+ 
+# Get those same slices back as arrays
+slice_x, slice_y, slice_z = case.return_slice(slice_number=(175, 279, 57), img_or_seg="img")
+ 
+# Crop the whole volume down to the segmented region (modifies the mutated arrays in place)
+case.apply_seg_crop_to_image(img_or_seg="both")
+print(case.mutated_img_data.shape)  # smaller now
+```
+
+As stated earlier, building `CTImagesLibrary` automatically: changes the working directory into `path_to_folder`, loads the image and segmentation, and builds isotropic, RAS-reoriented copies. After construction, both the raw and processed arrays are available as attributes via `your_instancename.raw_img_data`, or for seg `your_instancename.raw_seg_data`.
+
+## Further detail
+This section goes one level deeper on each of the two sublibraries: how you construct it, and what you can call on it once you have an instance. Both are reached through the top-level package (`import EasyMedicalImages as EMI`, then `EMI.HighLevel` or `EMI.CTImagesLibrary`).
+
+### HighLevel
+The batch sublibrary. Point it at a parent folder, call `run_on_directory`, and get every case back as `(image, seg)` array pairs. This is the one to reach for when you want a whole dataset in memory at once.
+
+Construct it (default parameters):
+```python
+HighLevel(
+    path_to_folder,
+    image_path="image.nii.gz",
+    seg_path="tumor_segmentation_v2.nii.gz",
+    verbose=False,
+    thread_deadline_time=66.0,
+    verbose_workers=True,
+)
+```
+
+- `path_to_folder`: parent folder whose immediate subfolders are individual cases.
+- `image_path`, `seg_path`: file names to look for inside each case folder.
+- `verbose`: passed through to each worker for extra logging.
+- `thread_deadline_time`: per-case wall-clock budget in seconds. A worker that runs longer is killed and that case is skipped. This is to prevent a thread, which is just stalling or trying to load a not image, from stoping the whole process.
+- `verbose_workers`: print per-worker progress (which case each worker picked up, load confirmations, and the final count).
+  
+Methods:
+
+- **`run_on_directory(directory_path="")`**
+Loads every case in the directory and returns a list of `(image, seg)` tuples, one per case, in the same order as the folders on disk. Both elements are NumPy `float32` arrays, already resampled to isotropic spacing and reoriented to RAS. If `directory_path` is given it overrides `path_to_folder` for that one call. Cases that fail to load or exceed `thread_deadline_time` are dropped, so the returned list can be shorter than the number of folders in theory (so don't set this too low).
+
+Loading runs in parallel: one worker subprocess per case, across roughly 80 percent of the available hardware threads. On Linux it respects the CPU affinity set by schedulers such as SLURM, so it behaves correctly on a cluster node. Note that this method returns images and segmentations only; it does not return affines.
+
+- **`how_many_threads_available()`**
+Returns the number of hardware threads detected (the figure the worker pool is sized from). Honors SLURM cpuset limits on Linux and falls back sensibly when the OS reports nothing.
+
+### CTImagesLibrary
+The single-case sublibrary. Construct it on one case folder and the data is processed and waiting on the instance; from there you slice, crop, reorient, and display. This is the toolkit `HighLevel` runs under the hood for each case, so the arrays you get out of either path match.
+
+Construct it (default parameters):
+```python
+CTImagesLibrary(
+    path_to_folder,
+    image_path="image.nii.gz",
+    seg_path="tumor_segmentation_v2.nii.gz",
+    verbose=True,
+    return_affines=False,
+)
+```
+
+The image and segmentation are loaded and processed during construction, so the attributes below are ready as soon as the instance exists.
+
+Attributes on the instance:
+- `raw_img_data`, `raw_seg_data`: the original voxel arrays as loaded.
+- `raw_img_affine`, `raw_seg_affine`: the original 4x4 affine matrices.
+- `mutated_img_data`, `mutated_seg_data`: isotropic, RAS-reoriented copies. These are usually what you want for machine learning.
+- `mutated_img_affine`, `mutated_seg_affine`: affines describing the processed grid.
+
+methods:
+
+- **`display_slice(slice_number=(), cmap="viridis", view_axes=("X", "Y", "Z"), load_mutated=True, crop=False, pad=5, img_or_seg="img")`**
+Shows one slice per requested axis side by side with matplotlib. `slice_number` is a 1-based `(X, Y, Z)` tuple and must contain exactly three values. Set `load_mutated=False` to view the original (non-isotropic) volume, `crop=True` to trim each slice to its own non-background region (with `pad` voxels of margin), and `img_or_seg="seg"` to view the segmentation instead.
+
+
+- **`return_slice(slice_number=(), view_axes=("X", "Y", "Z"), load_mutated=True, one_list=False, crop=False, pad=5, img_or_seg="img")`**
+Returns slices as arrays instead of displaying them. With the default three axes it returns `(slice_x, slice_y, slice_z)`; set `one_list=True` to get them as a single array of three instead (convenient for batching). Request a single axis (for example `view_axes=("Z",)`) to get just that one slice back. The arrays match exactly what `display_slice` shows.
+
+
+- **`apply_seg_crop_to_image(pad=5, return_data=False, img_or_seg="both")`**
+Crops the full 3D volume in place to the bounding box of the segmentation, keeping `pad` voxels of margin. This overwrites `mutated_img_data` and `mutated_seg_data` (and their affines) with the cropped versions. Use `img_or_seg` to crop only `"img"`, only `"seg"`, or `"both"` (the default). If the segmentation is empty, nothing is cropped. Set `return_data=True` to also return the cropped arrays.
+
+
+- **`apply_seg_crop_to_slice(slice_number=(), one_list=False, pad=5, img_or_seg="img")`**
+The 2D version: returns the X, Y, and Z slices cropped to the segmentation's footprint in each plane. Unlike the 3D version, this runs on the image or the segmentation, not both at once (`img_or_seg` is `"img"` by default). `slice_number` is the same 1-based `(X, Y, Z)` tuple.
+
+
+## Notes on orientation
+The processed arrays (`mutated_img_data` and friends) are in proper RAS orientation. The slices produced by `display_slice` and `return_slice` add a 90-degree flip on the Z axis so they read naturally in matplotlib (similar to how ITK displays them). In short: use the instance arrays when you need correct anatomical orientation, and use `return_slice` when you want something that looks right on screen.
 
 PyPI link: [PyPI](https://pypi.org/project/easy-medical-images/)
