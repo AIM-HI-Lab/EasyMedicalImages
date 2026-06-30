@@ -74,7 +74,14 @@ std::vector<std::string> HighLevel::_go_one_level_deep(bool debug, std::string o
 }
 
 int HighLevel::how_many_threads_available(bool debug){
-    unsigned int threads = std::thread::hardware_concurrency();
+    unsigned int threads = 0;
+    #ifdef __linux__
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        if (sched_getaffinity(0, sizeof(set), &set) == 0)
+            threads = static_cast<unsigned int>(CPU_COUNT(&set));  // respects the SLURM cpuset
+    #endif
+    if (threads == 0) threads = std::thread::hardware_concurrency();  // fallback
     if (threads==0) {
         threads = 1;
         std::cout<<"Strangely, the computer doesn't think you have any threads. Attempting to use single thread mode."<<std::endl;

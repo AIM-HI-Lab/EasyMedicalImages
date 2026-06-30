@@ -32,6 +32,10 @@ endif()
 # Lands the .so as EasyMedicalImages/_core...  -> importable as EasyMedicalImages._core
 install(TARGETS _core DESTINATION EasyMedicalImages)
 
+if (UNIX AND NOT APPLE)
+    target_link_options(_core PRIVATE -static-libstdc++ -static-libgcc)
+endif()
+
 #cmake_minimum_required(VERSION 3.30)
 #project(EasyMedicalImages)
 #
