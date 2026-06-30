@@ -37,8 +37,8 @@ To update the PyPI, make a special github push:
 After you push normally, do the following:
 
 ```
-git tag v0.0.1a5
-git push origin v0.0.1a5
+git tag v0.0.2a4
+git push origin v0.0.2a4
 ```
 
 Remember to change the verison in pyproject.toml!

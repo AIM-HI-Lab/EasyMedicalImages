@@ -6,43 +6,45 @@ on:
       - "v*"
 
 jobs:
-  test:
-    name: Build & import (${{ matrix.os }})
+  build_wheels:
+    name: Wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.0.0   # pin; bump when you release
+        env:
+          CIBW_TEST_COMMAND: 'python -c "import EasyMedicalImages; EasyMedicalImages.HighLevel"'
+      - uses: actions/upload-artifact@v4
         with:
-          python-version: "3.x"
-      - name: Build distributions
-        run: |
-          python -m pip install --upgrade build
-          python -m build
-      - name: Install the built wheel and import it
-        shell: bash
-        run: |
-          pip install dist/*.whl
-          python -c "import EasyMedicalImages; print('ok on ${{ matrix.os }}')"
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        run: pipx run build --sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: ./dist/*.tar.gz
 
   publish:
     name: Publish to PyPI
-    needs: test
+    needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/download-artifact@v4
         with:
-          python-version: "3.x"
-      - name: Build distributions
-        run: |
-          python -m pip install --upgrade build
-          python -m build
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
