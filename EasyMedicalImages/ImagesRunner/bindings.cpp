@@ -22,12 +22,13 @@ PYBIND11_MODULE(_core, m) {
     m.doc() = "C++ core for EasyMedicalImages";
 
     py::class_<HighLevel>(m, "HighLevel")
-        .def(py::init<std::string, std::string, std::string, bool, float>(),
-             py::arg("path_to_folder"),
-             py::arg("image_path")           = "image.nii.gz",
-             py::arg("seg_path")             = "tumor_segmentation_v2.nii.gz",
-             py::arg("verbose")              = false,
-             py::arg("thread_deadline_time") = 66.0f)
+        .def(py::init<std::string, std::string, std::string, bool, float, bool>(),
+            py::arg("path_to_folder"),
+            py::arg("image_path")           = "image.nii.gz",
+            py::arg("seg_path")             = "tumor_segmentation_v2.nii.gz",
+            py::arg("verbose")              = false,
+            py::arg("thread_deadline_time") = 66.0f,
+            py::arg("verbose_workers")      = true)
         .def("run_on_directory",
         [](HighLevel& self, const std::string& directory_path) {
                 self.python_exe = py::module_::import("sys").attr("executable").cast<std::string>();
@@ -43,6 +44,5 @@ PYBIND11_MODULE(_core, m) {
                 return out;  // list[tuple[np.ndarray, np.ndarray]]
              },
              py::arg("directory_path") = "")
-        .def("how_many_threads_available", &HighLevel::how_many_threads_available,
-             py::arg("debug") = true);
+        .def("how_many_threads_available", &HighLevel::how_many_threads_available);
 }

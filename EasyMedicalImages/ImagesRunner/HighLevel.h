@@ -52,7 +52,7 @@ public:
     // degenerate -- two identical alternatives you couldn't tell apart.)
     std::vector<std::pair<Volume, Volume>> img_seg_pairs;
 
-    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=66);
+    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=66, bool verbose_workers=true);
 
     // Runs the whole fan-out and hands back the collected (image, seg) pairs by
     // value -- moved out of img_seg_pairs, so the member is left empty after the
@@ -68,9 +68,9 @@ public:
     // Fans out one CTImagesLibrary subprocess per case across a thread pool,
     // reads each result back over a pipe (no disk), and collects the (image,
     // seg) pairs into img_seg_pairs.
-    void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,bool return_affines = false,bool debug = false);
+    void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,bool return_affines = false,bool verbose_workers=true);
 
-    int how_many_threads_available(bool debug = true);
+    int how_many_threads_available();
 
     float thread_deadline_time = 66.0f;
 
@@ -81,4 +81,5 @@ private:
     std::string hl_img_path;
     std::string hl_seg_path;
     bool verbose;
+    bool verbose_workers;
 };

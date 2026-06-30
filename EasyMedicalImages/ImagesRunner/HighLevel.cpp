@@ -34,18 +34,19 @@ extern char **environ;
 
 namespace fs = std::filesystem;
 
-HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::string seg_path, bool verbose, float thread_deadline_time):
+HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::string seg_path, bool verbose, float thread_deadline_time, bool verbose_workers):
     path_to_folder(std::move(path_to_folder)),
     hl_img_path(std::move(image_path)),
     hl_seg_path(std::move(seg_path)),
     thread_deadline_time(thread_deadline_time),
+    verbose_workers(verbose_workers),
     verbose(verbose) {
     // img_seg_pairs default-constructed empty, so there's nothing to clear here.
     }
 
 std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path) {
     std::vector<std::string> all_data = _go_one_level_deep(/*debug=*/false, "folders", directory_path);
-    _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*debug=*/verbose);
+    _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*verbose_workers=*/verbose_workers);
     return std::move(img_seg_pairs);  // move, not copy, this vector will probably be huge
 }
 
@@ -73,7 +74,7 @@ std::vector<std::string> HighLevel::_go_one_level_deep(bool debug, std::string o
     return all_data;
 }
 
-int HighLevel::how_many_threads_available(bool debug){
+int HighLevel::how_many_threads_available(){
     unsigned int threads = 0;
     #ifdef __linux__
         cpu_set_t set;
@@ -82,7 +83,7 @@ int HighLevel::how_many_threads_available(bool debug){
             threads = static_cast<unsigned int>(CPU_COUNT(&set));  // respects the SLURM cpuset
     #endif
     if (threads == 0) threads = std::thread::hardware_concurrency();  // fallback
-    if (threads==0) {
+    if (threads==0) { // This works becuase if the threads are still 0 after running, it really is detecting 0 threads.
         threads = 1;
         std::cout<<"Strangely, the computer doesn't think you have any threads. Attempting to use single thread mode."<<std::endl;
     }
@@ -200,9 +201,7 @@ namespace {
 
         PROCESS_INFORMATION pi{};
         // CREATE_SUSPENDED so we can put it in the job before it can spawn anything.
-        BOOL ok = CreateProcessA(nullptr, buf.data(), nullptr, nullptr, TRUE,
-                                 CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP,
-                                 nullptr, nullptr, &si, &pi);
+        BOOL ok = CreateProcessA(nullptr, buf.data(), nullptr, nullptr, TRUE, CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP, nullptr, nullptr, &si, &pi);
         CloseHandle(wr);
         if (!ok) { CloseHandle(rd); return false; }
 
@@ -290,12 +289,14 @@ namespace {
 
 }
 
-void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool debug) {
+void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers) {
     const auto kLoadTimeout = std::chrono::duration<float>(this->thread_deadline_time);
-    const int  hw   = how_many_threads_available(true);
+    const int  hw   = how_many_threads_available();
     const long want = std::lround(static_cast<double>(hw) * 0.80);
     const size_t batch_size = static_cast<size_t>(std::max(1L, want)); // batch size is how many threads we are running, if your confused.
-    std::cout << "Using up to " << batch_size << " concurrent worker(s)\n";
+    if (verbose_workers){
+        std::cout << "Using up to " << batch_size << " concurrent worker(s)\n";
+    }
 
     // all_data is a huge list of all of the patient folder names. Each thread to 1 independent folder. This is to fight race conditions
     // and input order is preserved.
@@ -308,10 +309,10 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
             const size_t      idx      = batch_start + i;
             const std::string path_str = all_data[idx];  // copy: outlives the call frame
 
-            if (debug)
+            if (verbose_workers)
                 std::cout << "Worker " << i << " -> " << path_str << '\n';
 
-            workers.emplace_back([this, path_str, idx, &results, debug, return_affines, kLoadTimeout]() {
+            workers.emplace_back([this, path_str, idx, &results, verbose_workers, return_affines, kLoadTimeout]() {
                 // argv (not a shell string): posix_spawnp/CreateProcess take it
                 // directly, so paths with spaces need no quoting and SIGKILL
                 // runs on Python itself rather than a /bin/sh wrapper.
@@ -366,7 +367,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
                 const int  rc = reap(sp);             // rc == 0 means clean exit
 
                 if (r.ok && rc == 0) {
-                    if (debug)
+                    if (verbose_workers)
                         std::cout << "Loaded " << path_str << "  img.ndim=" << r.img.shape.size() << "  seg.ndim=" << r.seg.shape.size() << '\n'<< '\n';
                     results[idx] = std::make_pair(std::move(r.img), std::move(r.seg));
                 } else {
