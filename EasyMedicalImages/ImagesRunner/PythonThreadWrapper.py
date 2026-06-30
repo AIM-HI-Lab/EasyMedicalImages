@@ -4,12 +4,11 @@ import sys
 import numpy as np
 from EasyMedicalImages.ImagesRunner.CTImagesLibrary import CTImagesLibrary
 
-def load_case(folder_path, image_path, seg_path, return_affine=False):
-    ct = CTImagesLibrary(path_to_folder=folder_path, image_path=image_path, seg_path=seg_path, verbose=False)
+def load_case(folder_path, image_path, seg_path, return_affine=False, verbose=False):
+    ct = CTImagesLibrary(path_to_folder=folder_path, image_path=image_path, seg_path=seg_path, verbose=verbose)
     if not return_affine:
         return ct.mutated_img_data, ct.mutated_seg_data
-    else:
-        return ct.mutated_img_data, ct.mutated_seg_data, ct.mutated_img_affine, ct.mutated_seg_affine
+    return ct.mutated_img_data, ct.mutated_seg_data, ct.mutated_img_affine, ct.mutated_seg_affine
 
 def _write_volume(stream, arr, affine=None):
     # int32 ndim | int64 shape[ndim] | float32 data[...] | [ float64 affine[16] ]
@@ -27,6 +26,7 @@ def main():
     p.add_argument("--img",    required=True)
     p.add_argument("--seg",    required=True)
     p.add_argument("--return_affine", action="store_true")
+    p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
 
     # stdout is the data channel back to C++ (read via popen). Two invariants,
@@ -42,13 +42,11 @@ def main():
     sys.stdout = sys.stderr
 
     if args.return_affine:
-        img, seg, img_aff, seg_aff = load_case(
-            args.folder, args.img, args.seg, return_affine=True
-        )
+        img, seg, img_aff, seg_aff = load_case(args.folder, args.img, args.seg, return_affine=True, verbose=args.verbose)
         _write_volume(payload, img, img_aff)
         _write_volume(payload, seg, seg_aff)
     else:
-        img, seg = load_case(args.folder, args.img, args.seg)
+        img, seg = load_case(args.folder, args.img, args.seg, verbose=args.verbose)
         _write_volume(payload, img)
         _write_volume(payload, seg)
 

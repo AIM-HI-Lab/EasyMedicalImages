@@ -11,7 +11,7 @@ python -m build
 then
 ```
 cd W:\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages
-Remove-Item -Recurse -Force build   # the failed configure left a stale cache
+# Remove-Item -Recurse -Force build   # the failed configure left a stale cache
 pip install -e .
 ```
 

@@ -45,7 +45,7 @@ HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::st
 
 std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path) {
     std::vector<std::string> all_data = _go_one_level_deep(/*debug=*/false, "folders", directory_path);
-    _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*debug=*/true);
+    _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*debug=*/verbose);
     return std::move(img_seg_pairs);  // move, not copy, this vector will probably be huge
 }
 
@@ -328,6 +328,9 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
                 };
                 if (return_affines) {
                     argv.push_back("--return_affine");
+                }
+                if (this->verbose) {
+                    argv.push_back("--verbose");
                 }
 
                 Subprocess sp;
