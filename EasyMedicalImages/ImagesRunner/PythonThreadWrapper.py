@@ -41,11 +41,6 @@ def main():
     payload = sys.stdout.buffer
     sys.stdout = sys.stderr
 
-    # If load_case raises, the traceback goes to stderr and we exit non-zero with
-    # nothing written to stdout, so the C++ side just skips this case (read fails
-    # / close_pipe != 0). Mirrors Python's per-folder try/except.
-    img, seg = load_case(args.folder, args.img, args.seg)
-
     if args.return_affine:
         img, seg, img_aff, seg_aff = load_case(
             args.folder, args.img, args.seg, return_affine=True

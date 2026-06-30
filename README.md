@@ -3,6 +3,8 @@ The easy way to manipulate medical images
 
 This is a library that focuses on taking CT scans and transforming them into arrays in python; giving the user easy ways to manipulate them as well. This can easily be used for downstream usage of CT images within a Python script.
 
+STILL DO NOT DOWNLOAD YET, WIP
+
 ### Quick Start:
 ```python
 import EasyMedicalImages as EMI

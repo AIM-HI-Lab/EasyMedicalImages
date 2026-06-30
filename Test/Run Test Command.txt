@@ -3,11 +3,24 @@
 
 python -B -m pytest "Test/test_reorient.py" --image-folder "W:\...\your_folder" -p no:cacheprovider
 
-To build the wheels for a new version:
+To build a new version and its wheels:
+```
+$env:Path = "C:\Users\HONNN2\mingw64\bin;$env:Path"
+python -m build
+```
+then
 ```
 cd W:\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages
 Remove-Item -Recurse -Force build   # the failed configure left a stale cache
 pip install -e .
+```
+
+To test the library before publishing (AFTER CDing AND ACTIVNG THE VENV IN THE FOLLOWING PLACE)
+(.venv) PS Microsoft.PowerShell.Core\FileSystem::\\CC.AD.CCHS.NET\WORLD\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages> :
+```
+& "$env:TEMP\emi-test\Scripts\Activate.ps1"
+cd $env:TEMP
+python "C:\Users\HONNN2\OneDrive - Cleveland Clinic\Documents\TempTest2.py"
 ```
 
 To build a new version:
