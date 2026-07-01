@@ -104,39 +104,50 @@ class CTImagesLibrary:
 
         Changes the working directory to the target and returns it.
         """
-        anchor = "AIM-HI-Lab"
+    def jump_to_folder(self, subpath=""):
+        """Change into a folder, trying known share roots before the path as-is.
+
+        The AIM-HI-Lab data sits at a different prefix on each machine (the W:
+        share on Windows, the isilon mount on the cluster), but the path after
+        "AIM-HI-Lab" is identical. So a path copied from one machine can be
+        re-rooted to run on another. Candidates are tried in order:
+            1. the W: share root
+            2. the isilon mount root
+            3. the path exactly as given
+        The first one that exists on this machine wins. Paths without
+        "AIM-HI-Lab" skip straight to option 3.
+        """
         subpath = self.what_os_is_running(str(subpath), verbose=self.verbose)
-        subpath = Path(subpath)
+        given = Path(subpath).expanduser()
 
-        # If the pasted path already contains AIM-HI-Lab (e.g. a full path
-        # copied from the other machine), keep only the part after it so we
-        # can re-root it on whichever machine we're running on.
-        parts = subpath.parts
+        anchor = "AIM-HI-Lab"
+        # One root per machine. Verify the Windows root is where the DATA lives,
+        # not just the code. Consider promoting to a class attr / env var.
+        share_roots = [
+            Path(r"W:\Shared\LRI\Labs\AIM-HI-Lab"),    # Windows
+            Path("/mnt/isilon/w_nonlri/AIM-HI-Lab"),   # cluster
+        ]
+
+        candidates = []
+        parts = given.parts
         if anchor in parts:
-            idx = parts.index(anchor)
-            subpath = Path(*parts[idx + 1:])
+            suffix = Path(*parts[parts.index(anchor) + 1:])   # portable part
+            candidates += [root / suffix for root in share_roots]
+        candidates.append(given)                              # fall back to as-given
 
-        if subpath.is_absolute():
-            target = subpath.resolve()
-        else:
-            here = Path(__file__).resolve()
-            lab_root = None
-            for parent in (here, *here.parents):
-                if parent.name == anchor:
-                    lab_root = parent
-                    break
-            if lab_root is None:
-                raise FileNotFoundError(
-                    f"Could not find a '{anchor}' folder above {here}"
-                )
-            target = (lab_root / subpath).resolve()
+        for cand in candidates:
+            try:
+                resolved = cand.expanduser().resolve()
+            except OSError:
+                continue
+            if resolved.exists():
+                os.chdir(resolved)
+                if self.verbose:
+                    print(f"Now in directory: {Path.cwd()}")
+                return resolved
 
-        if not target.exists():
-            raise FileNotFoundError(f"Path does not exist: {target}")
-
-        os.chdir(target)
-        print(f"Now in directory: {Path.cwd()}")
-        return target
+        tried = "\n  ".join(str(c) for c in candidates)
+        raise FileNotFoundError(f"None of these paths exist:\n  {tried}")
 
     def _make_isotropic(self,slice_2d, sr, sc, order=1, target=None):
         """Resample a 2D slice so its pixels are square in physical (mm) space.

@@ -390,6 +390,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
 }
 
 int run_test() {
+    // This is a manual way to test any changes made to the above class
     std::cout << "Enter the path to the folder: ";
     std::string input_path;
     std::getline(std::cin, input_path);
