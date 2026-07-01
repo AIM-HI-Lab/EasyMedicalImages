@@ -16,6 +16,9 @@ __pycache__/
 # data/
 # samples/
 
+# Local Slurm scripts and logs — never commit or publish
+SlurmTest/
+
 # Windows
 [Tt]humbs.db
 [Dd]esktop.ini

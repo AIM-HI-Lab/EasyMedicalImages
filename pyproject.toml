@@ -28,6 +28,8 @@ include = ["EasyMedicalImages*"]
 [tool.scikit-build]
 minimum-version = "0.12.2"
 wheel.packages = ["EasyMedicalImages"]
+sdist.exclude = ["SlurmTest"]
+wheel.exclude = ["SlurmTest/**"]
 build-dir = "build/{wheel_tag}"
 editable.rebuild = true
 editable.verbose = true
