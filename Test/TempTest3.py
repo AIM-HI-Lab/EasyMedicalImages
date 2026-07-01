@@ -8,4 +8,7 @@ img_seg_pairs_mega_list = instance.run_on_directory()  # list of (image, seg) ar
 all_images=[images for images,_ in img_seg_pairs_mega_list]
 all_segmentations=[segmentations for _, segmentations in img_seg_pairs_mega_list]
 
+print(f"Images: {all_images}")
+print(f"Segmentation Masks: {all_segmentations}")
+
 print([(img.shape, seg.shape) for img, seg in img_seg_pairs_mega_list])

@@ -121,8 +121,7 @@ class CTImagesLibrary:
         given = Path(subpath).expanduser()
 
         anchor = "AIM-HI-Lab"
-        # One root per machine. Verify the Windows root is where the DATA lives,
-        # not just the code. Consider promoting to a class attr / env var.
+        # A shortcut for easier usage
         share_roots = [
             Path(r"W:\Shared\LRI\Labs\AIM-HI-Lab"),    # Windows
             Path("/mnt/isilon/w_nonlri/AIM-HI-Lab"),   # cluster

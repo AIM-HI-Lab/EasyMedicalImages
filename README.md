@@ -24,6 +24,8 @@ parent_folder/
 └── ...
 ```
 
+#### Remeber to put the proper root for the input directory path! For example, if your files live on a cloud.
+
 `CTImagesLibrary` operates on a single case folder. `HighLevel` operates on a parent folder and loads every case folder inside it.
 
 ## How it fits together
@@ -61,9 +63,11 @@ To access all of the images or all of the segs while keeping order, one can simp
 all_images=[images for images,_ in img_seg_pairs_mega_list]
 all_segmentations=[segmentations for _, segmentations in img_seg_pairs_mega_list]
 
+# Both of the below will print the entire array
 print(f"Images: {all_images}")
-print(f"Segs: {all_segmentations}")
+print(f"Segmentation Masks: {all_segmentations}")
 
+# This just shows the shape, easier to comprehend.
 print([(img.shape, seg.shape) for img, seg in img_seg_pairs_mega_list])
 ```
 
