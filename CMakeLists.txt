@@ -21,6 +21,9 @@ pybind11_add_module(_core
         EasyMedicalImages/ImagesRunner/bindings.cpp
 )
 
+# Windows (MinGW): fold the GCC runtime into the .pyd so the wheel is
+# self-contained. Safe here because a CPython-on-Windows process is MSVC-based
+# and nothing else in it links libstdc++, so there is no second copy to clash with.
 if (MINGW)
     target_link_options(_core PRIVATE
             -static-libgcc
@@ -29,12 +32,20 @@ if (MINGW)
     )
 endif()
 
+# NOTE: do NOT static-link libstdc++/libgcc on Linux.
+# numpy and scipy load libstdc++ dynamically, so a statically-linked copy inside
+# _core gives the process two libstdc++ runtimes and the extension crashes at its
+# first iostream/exception use (segfault in how_many_threads_available at the
+# std::cout). Link libstdc++ dynamically and let auditwheel (run automatically by
+# cibuildwheel) handle manylinux portability. If auditwheel ever complains about
+# GLIBCXX/CXXABI symbol versions coming from the C++23 build, bump the manylinux
+# image (CIBW_MANYLINUX_X86_64_IMAGE) instead of reintroducing static linking.
+#
+# (The `if (UNIX AND NOT APPLE)` static-link block that used to live here was the
+#  cause of the Linux segfault and has been removed.)
+
 # Lands the .so as EasyMedicalImages/_core...  -> importable as EasyMedicalImages._core
 install(TARGETS _core DESTINATION EasyMedicalImages)
-
-if (UNIX AND NOT APPLE)
-    target_link_options(_core PRIVATE -static-libstdc++ -static-libgcc)
-endif()
 
 #cmake_minimum_required(VERSION 3.30)
 #project(EasyMedicalImages)

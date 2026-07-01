@@ -1,6 +1,8 @@
 # EasyMedicalImages
 The easy way to manipulate medical images
 
+## Do not install yet! Still a work in progress.
+
 ## Installation
 Requires Python 3.12 or newer.
 
@@ -36,22 +38,31 @@ There are two main sub libraries:
    See below for examples.
 
 ## Quick start: load a whole directory
+
 ```python
 import EasyMedicalImages as EMI
- 
+
 path_to_folder_of_ct_scans = input("Input path to CT scans: ")
 instance = EMI.HighLevel(path_to_folder=path_to_folder_of_ct_scans)
- 
-mega_data_list = instance.run_on_directory()  # list of (image, seg) array pairs
-# mega_data_list=[(img1, seg1),(img2, seg2)...]
+
+img_seg_pairs_mega_list = instance.run_on_directory()  # list of (image, seg) array pairs
+'''
+img_seg_pairs_mega_list=[(img1, seg1),(img2, seg2)...]
+'''
 
 # Each entry is one case
-img, seg = mega_data_list[0]
-print(f"{len(mega_data_list)} cases loaded")
+img, seg = img_seg_pairs_mega_list[0]
+print(f"{len(img_seg_pairs_mega_list)} cases loaded")
 print(f"First image shape: {img.shape}, seg shape: {seg.shape}")
 ```
 
-Every entry in `mega_data_list` is a tuple of two NumPy `float32` arrays: the image and its segmentation. Both are already resampled to isotropic spacing and reoriented to RAS, so they are ready to use.
+Every entry in `img_seg_pairs_mega_list` is a tuple of two NumPy `float32` arrays: the image and its segmentation. Both are already resampled to isotropic spacing and reoriented to RAS, so they are ready to use.
+
+To access all of the images or all of the segs while keeping order, one can simply do:
+```python
+all_images=[images for images,_ in img_seg_pairs_mega_list]
+all_segmentations=[segmentations for _, segmentations in img_seg_pairs_mega_list]
+```
 
 ## Working with a single case
 ```python

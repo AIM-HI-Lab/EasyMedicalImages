@@ -1,6 +1,6 @@
 import EasyMedicalImages as EMI
 path_to_folder_of_ct_scans=input("Input path to ct scans: ")
-instance=EMI.HighLevel(path_to_folder=path_to_folder_of_ct_scans)
+instance=EMI.HighLevel(path_to_folder=path_to_folder_of_ct_scans, verbose_workers=True)
 megadatalist=instance.run_on_directory()
 print(megadatalist) # This outputs all of the images in that directory as arrays!
 
