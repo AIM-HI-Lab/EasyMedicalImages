@@ -1,8 +1,6 @@
 # EasyMedicalImages
 The easy way to manipulate medical images
 
-## Do not install yet! Still a work in progress.
-
 ## Installation
 Requires Python 3.12 or newer.
 
@@ -62,6 +60,8 @@ To access all of the images or all of the segs while keeping order, one can simp
 ```python
 all_images=[images for images,_ in img_seg_pairs_mega_list]
 all_segmentations=[segmentations for _, segmentations in img_seg_pairs_mega_list]
+
+print([(img.shape, seg.shape) for img, seg in img_seg_pairs_mega_list])
 ```
 
 ## Working with a single case
