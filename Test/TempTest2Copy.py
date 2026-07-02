@@ -11,6 +11,7 @@ folders when prompted.
 
 import numpy as np
 import EasyMedicalImages as EMI
+import time as tym
 
 
 def same_volume(a, b):
@@ -22,7 +23,7 @@ def same_volume(a, b):
 
 # 1) Batch load the whole directory.
 parent = input("Path to the FOLDER OF cases: ").strip()
-batch = EMI.HighLevel(path_to_folder=parent, verbose=True, verbose_workers=True, thread_deadline_time=180).run_on_directory()
+batch = EMI.HighLevel(path_to_folder=parent, verbose=False, verbose_workers=True, thread_deadline_time=180).run_on_directory()
 print(f"Batch type: {type(batch)}")
 # print(f"Batch: {batch}")
 
