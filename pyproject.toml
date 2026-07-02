@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "easy-medical-images"
-version = "1.0.0"
+version = "1.0.1"
 description = "The easy way to manipulate medical images."
 readme = "README.md"
 license = "MIT"
@@ -20,6 +20,42 @@ dependencies = [
     "tqdm>=4.67.3",
     "SimpleITK>=2.5.5"
     # add anything else your imports use, e.g. "scipy", "pydicom"
+]
+
+classifiers=[
+    #Language/OS
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python",
+    "Programming Language :: C++",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+
+    #Free-threading (PEP 703+)
+    #    "Programming Language :: Python :: Free Threading",
+    "Programming Language :: Python :: Free Threading :: 1 - Unstable",
+
+    #Maturity
+    "Development Status :: 5 - Production/Stable",
+
+    #Audiance
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+
+    #What it can be used for (topics)
+    "Topic :: Database",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+
+    #What its designed (but not required) to be used with (ecosystem)
+#    "Framework :: Matplotlib"
 ]
 
 [tool.setuptools.packages.find]
