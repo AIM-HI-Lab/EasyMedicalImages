@@ -44,7 +44,7 @@ PYBIND11_MODULE(_core, m) {
                 return out;  // list[tuple[np.ndarray, np.ndarray]]
              },
              py::arg("directory_path") = "")
-        .def("apply_operation_to_directory",
+        .def("processed_run_on_directory",
         [](HighLevel& self, const std::string& operation, py::dict op_kwargs,
            const std::string& directory_path, bool return_affines) {
                 self.python_exe = py::module_::import("sys").attr("executable").cast<std::string>();
@@ -54,7 +54,7 @@ PYBIND11_MODULE(_core, m) {
                 std::vector<std::pair<Volume, Volume>> pairs;
                 {
                     py::gil_scoped_release release;
-                    pairs = self.apply_operation_to_directory(operation, op_kwargs_json, directory_path, return_affines);
+                    pairs = self.processed_run_on_directory(operation, op_kwargs_json, directory_path, return_affines);
                 }
                 py::list out;
                 for (auto& pr : pairs)

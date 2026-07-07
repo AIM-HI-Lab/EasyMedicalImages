@@ -132,6 +132,32 @@ Loading runs in parallel: one worker subprocess per case, across roughly 80 perc
 - **`how_many_threads_available()`**
 Returns the number of hardware threads detected (the figure the worker pool is sized from). Honors SLURM cpuset limits on Linux and falls back sensibly when the OS reports nothing.
 
+- **`processed_run_on_directory()`**
+A special version of run_on_directory that applies a method to all items loaded. Presently, only `apply_seg_crop_to_image` is allowed.
+  *Example:*
+   ```python
+   hl = HighLevel(r"W:\...\dataset")           # or however you construct it
+   
+   pairs = hl.run_on_directory()               # unchanged plain load
+   
+   pairs = hl.processed_run_on_directory(     # crop every case to the seg bbox
+   "apply_seg_crop_to_image",
+   {"img_or_seg": "both", "pad": 5},
+   )
+   # -> list[tuple[np.ndarray, np.ndarray]]
+   ```
+
+- **`go_one_level_deep()`**
+A method which will display all of the items in a directory, be them folders, files, or both. If no perameter is specified for directory_path it will simply use the root given at HighLevels class construction.
+   *Example:*
+   ```python
+   hl = HighLevel(root, "image.nii.gz", "tumor_segmentation_v2.nii.gz")
+   hl.go_one_level_deep()                          # -> list[str] of subfolder paths
+   hl.go_one_level_deep(options="files")           # regular files only
+   hl.go_one_level_deep(options="all")             # everything
+   hl.go_one_level_deep(directory_path=other_dir)  # scan a different dir this call onl
+   ```
+
 ### CTImagesLibrary
 The single-case sublibrary. Construct it on one case folder and the data is processed and waiting on the instance; from there you slice, crop, reorient, and display. This is the toolkit `HighLevel` runs under the hood for each case, so the arrays you get out of either path match.
 

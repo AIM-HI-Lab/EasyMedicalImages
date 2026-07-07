@@ -52,7 +52,7 @@ public:
     // degenerate -- two identical alternatives you couldn't tell apart.)
     std::vector<std::pair<Volume, Volume>> img_seg_pairs;
 
-    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=66, bool verbose_workers=true);
+    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=100.1, bool verbose_workers=true);
 
     // Runs the whole fan-out and hands back the collected (image, seg) pairs by
     // value -- moved out of img_seg_pairs, so the member is left empty after the
@@ -63,10 +63,10 @@ public:
     // Generic sibling of run_on_directory: instead of just loading each case, it
     // runs a named CTImagesLibrary method (with JSON-encoded kwargs) IN PLACE inside
     // every worker, then streams the transformed volumes back. Example:
-    //     apply_operation_to_directory("apply_seg_crop_to_image", R"({"img_or_seg":"both","pad":5})");
+    //     processed_run_on_directory("apply_seg_crop_to_image", R"({"img_or_seg":"both","pad":5})");
     // Backwards compatible: run_on_directory / _get_all_images_and_segs_from_path
     // are unchanged; this is a separate entry point. Nothing touches disk.
-    std::vector<std::pair<Volume, Volume>> apply_operation_to_directory(const std::string& operation, const std::string& op_kwargs_json = "{}", const std::string& directory_path = "", bool return_affines = false);
+    std::vector<std::pair<Volume, Volume>> processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json = "{}", const std::string& directory_path = "", bool return_affines = false);
 
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
     // options is one of "folders", "files", "all". A non-empty directory_path
@@ -80,13 +80,13 @@ public:
 
     int how_many_threads_available();
 
-    float thread_deadline_time = 66.0f;
+    float thread_deadline_time = 100.1f;
 
     std::string python_exe;
 
 private:
     // Shared fan-out core behind both _get_all_images_and_segs_from_path (operation
-    // == "") and apply_operation_to_directory. When operation is non-empty the
+    // == "") and processed_run_on_directory. When operation is non-empty the
     // worker argv gains: --operation <operation> --op_kwargs <op_kwargs_json>.
     void _fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json);
 

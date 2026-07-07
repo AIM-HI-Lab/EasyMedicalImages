@@ -291,15 +291,18 @@ namespace {
 
 void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json) {
     const auto kLoadTimeout = std::chrono::duration<float>(this->thread_deadline_time);
-    const int  hw   = how_many_threads_available();
-    const long want = std::lround(static_cast<double>(hw) * 0.80);
+    const int  hw = how_many_threads_available();
+    const long want = (hw < 3) // the below is a part of this line but was broken up for readability
+        ? std::lround(static_cast<double>(hw) * 0.5) // if
+        : std::lround(static_cast<double>(hw)-1.0); // else
+
     const size_t batch_size = static_cast<size_t>(std::max(1L, want)); // batch size is how many threads we are running, if your confused.
     if (verbose_workers){
         std::cout << "Using up to " << batch_size << " concurrent worker(s)\n";
     }
 
     // all_data is a huge list of all of the patient folder names. Each thread to 1 independent folder. This is to fight race conditions
-    // and input order is preserved.
+    // input order is preserved.
     std::vector<std::optional<std::pair<Volume, Volume>>> results(all_data.size());
 
     for (size_t batch_start = 0; batch_start < all_data.size(); batch_start += batch_size) {
@@ -403,7 +406,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
 
 // Generic sibling of run_on_directory (see header). Same directory walk + fan-out,
 // but each worker applies `operation` in place before streaming its volumes back.
-std::vector<std::pair<Volume, Volume>> HighLevel::apply_operation_to_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
+std::vector<std::pair<Volume, Volume>> HighLevel::processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
     std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
     _fan_out_workers(all_data, return_affines, verbose_workers, operation, op_kwargs_json);
     return std::move(img_seg_pairs);  // moved out; member left empty (this vector can be huge)
