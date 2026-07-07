@@ -116,19 +116,11 @@ def main():
     sys.stdout = sys.stderr
 
     if args.return_affine:
-        img, seg, img_aff, seg_aff = load_and_operate(
-            args.folder, args.img, args.seg,
-            operation=args.operation, op_kwargs=op_kwargs,
-            return_affine=True, verbose=args.verbose,
-        )
+        img, seg, img_aff, seg_aff = load_and_operate(args.folder, args.img, args.seg,operation=args.operation, op_kwargs=op_kwargs,return_affine=True, verbose=args.verbose)
         _write_volume(payload, img, img_aff)
         _write_volume(payload, seg, seg_aff)
     else:
-        img, seg = load_and_operate(
-            args.folder, args.img, args.seg,
-            operation=args.operation, op_kwargs=op_kwargs,
-            verbose=args.verbose,
-        )
+        img, seg = load_and_operate(args.folder, args.img, args.seg,operation=args.operation, op_kwargs=op_kwargs,verbose=args.verbose)
         _write_volume(payload, img)
         _write_volume(payload, seg)
 

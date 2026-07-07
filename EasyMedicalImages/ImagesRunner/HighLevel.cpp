@@ -45,12 +45,12 @@ HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::st
     }
 
 std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path) {
-    std::vector<std::string> all_data = _go_one_level_deep(/*debug=*/false, "folders", directory_path);
+    std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
     _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*verbose_workers=*/verbose_workers);
     return std::move(img_seg_pairs);  // move, not copy, this vector will probably be huge
 }
 
-std::vector<std::string> HighLevel::_go_one_level_deep(bool debug, std::string options, const std::string& directory) {
+std::vector<std::string> HighLevel::go_one_level_deep(bool debug, std::string options, const std::string& directory) {
     if (options != "folders" && options != "files" && options != "all") {
         throw std::invalid_argument("Invalid options: '" + options + "'");
     }
@@ -404,7 +404,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
 // Generic sibling of run_on_directory (see header). Same directory walk + fan-out,
 // but each worker applies `operation` in place before streaming its volumes back.
 std::vector<std::pair<Volume, Volume>> HighLevel::apply_operation_to_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
-    std::vector<std::string> all_data = _go_one_level_deep(/*debug=*/false, "folders", directory_path);
+    std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
     _fan_out_workers(all_data, return_affines, verbose_workers, operation, op_kwargs_json);
     return std::move(img_seg_pairs);  // moved out; member left empty (this vector can be huge)
 }

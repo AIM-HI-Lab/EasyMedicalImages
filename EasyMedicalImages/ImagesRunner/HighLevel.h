@@ -71,7 +71,7 @@ public:
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
     // options is one of "folders", "files", "all". A non-empty directory_path
     // overrides the path_to_folder member for this one call (it isn't stored).
-    std::vector<std::string> _go_one_level_deep(bool debug = false,std::string options = "folders",const std::string& directory_path = "");
+    std::vector<std::string> go_one_level_deep(bool debug = false,std::string options = "folders",const std::string& directory_path = "");
 
     // Fans out one CTImagesLibrary subprocess per case across a thread pool,
     // reads each result back over a pipe (no disk), and collects the (image,

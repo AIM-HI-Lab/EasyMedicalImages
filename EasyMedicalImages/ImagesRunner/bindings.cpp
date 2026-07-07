@@ -66,5 +66,9 @@ PYBIND11_MODULE(_core, m) {
              py::arg("op_kwargs")      = py::dict(),
              py::arg("directory_path") = "",
              py::arg("return_affines") = false)
+        .def("go_one_level_deep", &HighLevel::go_one_level_deep,
+             py::arg("debug")          = false,
+             py::arg("options")        = std::string("folders"),
+             py::arg("directory_path") = "")
         .def("how_many_threads_available", &HighLevel::how_many_threads_available);
 }
