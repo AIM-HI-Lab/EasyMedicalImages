@@ -289,7 +289,7 @@ namespace {
 
 }
 
-void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers) {
+void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json) {
     const auto kLoadTimeout = std::chrono::duration<float>(this->thread_deadline_time);
     const int  hw   = how_many_threads_available();
     const long want = std::lround(static_cast<double>(hw) * 0.80);
@@ -312,7 +312,7 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
             if (verbose_workers)
                 std::cout << "Worker " << i << " -> " << path_str << '\n';
 
-            workers.emplace_back([this, path_str, idx, &results, verbose_workers, return_affines, kLoadTimeout]() {
+            workers.emplace_back([this, path_str, idx, &results, verbose_workers, return_affines, kLoadTimeout, operation, op_kwargs_json]() {
                 // argv (not a shell string): posix_spawnp/CreateProcess take it
                 // directly, so paths with spaces need no quoting and SIGKILL
                 // runs on Python itself rather than a /bin/sh wrapper.
@@ -332,6 +332,12 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
                 }
                 if (this->verbose) {
                     argv.push_back("--verbose");
+                }
+                if (!operation.empty()) {
+                    argv.push_back("--operation");
+                    argv.push_back(operation);
+                    argv.push_back("--op_kwargs");
+                    argv.push_back(op_kwargs_json);
                 }
 
                 Subprocess sp;
@@ -387,6 +393,20 @@ void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string
         if (slot) img_seg_pairs.push_back(std::move(*slot));
 
     std::cout << "Collected " << img_seg_pairs.size() << " / " << all_data.size() << " cases\n";
+}
+
+// Backwards-compatible thin wrapper: the original plain-load fan-out is just the
+// generic one with no operation (so the worker argv is byte-for-byte what it was).
+void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers) {
+    _fan_out_workers(all_data, return_affines, verbose_workers, /*operation=*/"", /*op_kwargs_json=*/"{}");
+}
+
+// Generic sibling of run_on_directory (see header). Same directory walk + fan-out,
+// but each worker applies `operation` in place before streaming its volumes back.
+std::vector<std::pair<Volume, Volume>> HighLevel::apply_operation_to_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
+    std::vector<std::string> all_data = _go_one_level_deep(/*debug=*/false, "folders", directory_path);
+    _fan_out_workers(all_data, return_affines, verbose_workers, operation, op_kwargs_json);
+    return std::move(img_seg_pairs);  // moved out; member left empty (this vector can be huge)
 }
 
 int run_test() {

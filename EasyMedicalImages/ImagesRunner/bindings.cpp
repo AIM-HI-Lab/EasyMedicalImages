@@ -44,5 +44,27 @@ PYBIND11_MODULE(_core, m) {
                 return out;  // list[tuple[np.ndarray, np.ndarray]]
              },
              py::arg("directory_path") = "")
+        .def("apply_operation_to_directory",
+        [](HighLevel& self, const std::string& operation, py::dict op_kwargs,
+           const std::string& directory_path, bool return_affines) {
+                self.python_exe = py::module_::import("sys").attr("executable").cast<std::string>();
+                // Serialize kwargs -> JSON here, while we still hold the GIL.
+                std::string op_kwargs_json =
+                    py::module_::import("json").attr("dumps")(op_kwargs).cast<std::string>();
+                std::vector<std::pair<Volume, Volume>> pairs;
+                {
+                    py::gil_scoped_release release;
+                    pairs = self.apply_operation_to_directory(operation, op_kwargs_json, directory_path, return_affines);
+                }
+                py::list out;
+                for (auto& pr : pairs)
+                    out.append(py::make_tuple(volume_to_numpy(std::move(pr.first)),
+                    volume_to_numpy(std::move(pr.second))));
+                return out;  // list[tuple[np.ndarray, np.ndarray]]
+             },
+             py::arg("operation"),
+             py::arg("op_kwargs")      = py::dict(),
+             py::arg("directory_path") = "",
+             py::arg("return_affines") = false)
         .def("how_many_threads_available", &HighLevel::how_many_threads_available);
 }

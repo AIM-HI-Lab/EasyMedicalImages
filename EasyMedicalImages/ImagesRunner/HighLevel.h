@@ -60,6 +60,14 @@ public:
     // defaults to "" to mirror Python's None sentinel.
     std::vector<std::pair<Volume, Volume>> run_on_directory(const std::string& directory_path = "");
 
+    // Generic sibling of run_on_directory: instead of just loading each case, it
+    // runs a named CTImagesLibrary method (with JSON-encoded kwargs) IN PLACE inside
+    // every worker, then streams the transformed volumes back. Example:
+    //     apply_operation_to_directory("apply_seg_crop_to_image", R"({"img_or_seg":"both","pad":5})");
+    // Backwards compatible: run_on_directory / _get_all_images_and_segs_from_path
+    // are unchanged; this is a separate entry point. Nothing touches disk.
+    std::vector<std::pair<Volume, Volume>> apply_operation_to_directory(const std::string& operation, const std::string& op_kwargs_json = "{}", const std::string& directory_path = "", bool return_affines = false);
+
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
     // options is one of "folders", "files", "all". A non-empty directory_path
     // overrides the path_to_folder member for this one call (it isn't stored).
@@ -77,6 +85,11 @@ public:
     std::string python_exe;
 
 private:
+    // Shared fan-out core behind both _get_all_images_and_segs_from_path (operation
+    // == "") and apply_operation_to_directory. When operation is non-empty the
+    // worker argv gains: --operation <operation> --op_kwargs <op_kwargs_json>.
+    void _fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json);
+
     std::string path_to_folder;
     std::string hl_img_path;
     std::string hl_seg_path;
