@@ -10,15 +10,34 @@ def load_case(folder_path, image_path, seg_path, return_affine=False, verbose=Fa
         return ct.mutated_img_data, ct.mutated_seg_data
     return ct.mutated_img_data, ct.mutated_seg_data, ct.mutated_img_affine, ct.mutated_seg_affine
 
+def _write_all(stream, buf, chunk=16 * 1024 * 1024):
+    # Windows rejects a single very large write to a pipe with OSError(EINVAL,
+    # errno 22). Feed the payload in <=chunk-byte slices. memoryview slicing is
+    # a view, not a copy -- also avoids materializing a full arr.tobytes() copy.
+    mv = memoryview(buf).cast("B")          # flat 1-D byte view (arr is C-contiguous)
+    off, n = 0, mv.nbytes
+    while off < n:
+        off += stream.write(mv[off:off + chunk])
+
 def _write_volume(stream, arr, affine=None):
     # int32 ndim | int64 shape[ndim] | float32 data[...] | [ float64 affine[16] ]
     arr = np.ascontiguousarray(arr, dtype="<f4")
     stream.write(np.asarray(arr.ndim,  dtype="<i4").tobytes())
     stream.write(np.asarray(arr.shape, dtype="<i8").tobytes())
-    stream.write(arr.tobytes())
+    _write_all(stream, arr)                 # the (possibly huge) voxel payload
     if affine is not None:
         aff = np.ascontiguousarray(affine, dtype="<f8").reshape(4, 4)  # row-major
         stream.write(aff.tobytes())
+
+# def _write_volume(stream, arr, affine=None):
+#     # int32 ndim | int64 shape[ndim] | float32 data[...] | [ float64 affine[16] ]
+#     arr = np.ascontiguousarray(arr, dtype="<f4")
+#     stream.write(np.asarray(arr.ndim,  dtype="<i4").tobytes())
+#     stream.write(np.asarray(arr.shape, dtype="<i8").tobytes())
+#     stream.write(arr.tobytes())
+#     if affine is not None:
+#         aff = np.ascontiguousarray(affine, dtype="<f8").reshape(4, 4)  # row-major
+#         stream.write(aff.tobytes())
 
 def main():
     p = argparse.ArgumentParser()
