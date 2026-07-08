@@ -15,21 +15,10 @@ cd W:\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages
 pip install -e .
 ```
 
-To test the library before publishing (AFTER CDing AND ACTIVNG THE VENV IN THE FOLLOWING PLACE)
-(.venv) PS Microsoft.PowerShell.Core\FileSystem::\\CC.AD.CCHS.NET\WORLD\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages> :
+if its having trouble finding cmake:
 ```
-& "$env:TEMP\emi-test\Scripts\Activate.ps1"
-cd $env:TEMP
-python "C:\Users\HONNN2\OneDrive - Cleveland Clinic\Documents\TempTest2.py"
-```
-
-To build a new version:
-```
-python -m venv $env:TEMP\emi-test
-$py = "$env:TEMP\emi-test\Scripts\python.exe"
-& $py -m pip install (Get-ChildItem dist\*.whl).FullName
-cd $env:TEMP
-& $py -c "import EasyMedicalImages; print('ok:', EasyMedicalImages.__file__)"
+pip install --force-reinstall dist\easy_medical_images-1.1.5-cp314-cp314-win_amd64.whl #replace this with the wheel you built
+python Test\VTest.py
 ```
 
 To update the PyPI, make a special github push:
@@ -47,3 +36,22 @@ git push origin v0.0.4a1 -f  # overwrite it on GitHub
 ```
 
 Remember to change the verison in pyproject.toml!
+
+OLD:
+
+To test the library before publishing (AFTER CDing AND ACTIVNG THE VENV IN THE FOLLOWING PLACE)
+(.venv) PS Microsoft.PowerShell.Core\FileSystem::\\CC.AD.CCHS.NET\WORLD\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages> :
+```
+& "$env:TEMP\emi-test\Scripts\Activate.ps1"
+cd $env:TEMP
+python "C:\Users\HONNN2\OneDrive - Cleveland Clinic\Documents\TempTest2.py"
+```
+
+To build a new version:
+```
+python -m venv $env:TEMP\emi-test
+$py = "$env:TEMP\emi-test\Scripts\python.exe"
+& $py -m pip install (Get-ChildItem dist\*.whl).FullName
+cd $env:TEMP
+& $py -c "import EasyMedicalImages; print('ok:', EasyMedicalImages.__file__)"
+```

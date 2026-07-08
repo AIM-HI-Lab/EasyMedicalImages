@@ -96,15 +96,6 @@ class CTImagesLibrary:
                     return system, path
 
     def jump_to_folder(self, subpath=""):
-        """Jump to a folder, accepting either an absolute or relative path.
-
-        - Absolute path: used directly (e.g. a full W:\\... path pasted in).
-        - Relative path: descends from the AIM-HI-Lab folder, which is found
-          by walking up from this file's location.
-
-        Changes the working directory to the target and returns it.
-        """
-    def jump_to_folder(self, subpath=""):
         """Change into a folder, trying known share roots before the path as-is.
 
         The AIM-HI-Lab data sits at a different prefix on each machine (the W:

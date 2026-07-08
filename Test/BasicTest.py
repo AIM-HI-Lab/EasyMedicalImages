@@ -1,5 +1,5 @@
 import EasyMedicalImages as EMI
-hl = EMI.HighLevel(path_to_folder=r"W:\Shared\LRI\Labs\AIM-HI-Lab\research-projects\honn\kidney-tumor-ct-sample-batch", thread_deadline_time=128.2)
+hl = EMI.HighLevel(path_to_folder=r"W:\Shared\LRI\Labs\AIM-HI-Lab\research-projects\honn\smaller-kidney-tumor-ct-sample-batch", thread_deadline_time=128.2)
 original_pairs=hl.run_on_directory()
 print(len(original_pairs), original_pairs[0][0].shape, original_pairs[0][1].shape)
 
