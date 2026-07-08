@@ -3,7 +3,7 @@ The easy way to manipulate medical images
 
 #### ---------------------------------------------------------------------------
 
-This is a library that focuses on taking CT scans and transforming them into arrays in python; giving the user easy ways to manipulate them as well. This can easily be used for downstream usage of CT images within a Python script.
+This is a library that focuses on taking CT scans (as NIFTI Images) and transforming them into arrays in python; giving the user easy ways to manipulate them as well. This can easily be used for downstream usage of CT images within a Python script.
 
 ## Installation
 Requires Python 3.12 or newer.
@@ -111,8 +111,8 @@ HighLevel(
     image_path="image.nii.gz",
     seg_path="tumor_segmentation_v2.nii.gz",
     verbose=False,
-    thread_deadline_time=66.0,
-    verbose_workers=True,
+    thread_deadline_time=100.1,
+    verbose_workers=True
 )
 ```
 
@@ -124,10 +124,10 @@ HighLevel(
   
 Methods:
 
-- **`run_on_directory(directory_path="")`**
-Loads every case in the directory and returns a list of `(image, seg)` tuples, one per case, in the same order as the folders on disk. Both elements are NumPy `float32` arrays, already resampled to isotropic spacing and reoriented to RAS. If `directory_path` is given it overrides `path_to_folder` for that one call. Cases that fail to load or exceed `thread_deadline_time` are dropped, so the returned list can be shorter than the number of folders in theory (so don't set this too low).
+- **`run_on_directory(directory_path="", return_affines=False)`**
+Loads every case in the directory and returns a list of `(image, seg)` tuples, one per case, in the same order as the folders on disk. Both elements are NumPy `float32` arrays, already resampled to isotropic spacing and reoriented to RAS. If `directory_path` is given it overrides `path_to_folder` for that one call. `return_affines` will return the affines with the images, making the resulting format `((image, image_affine), (seg, seg_affine))`. This allows easy calculation of rid spacing and 3D object information. Cases that fail to load or exceed `thread_deadline_time` are dropped, so the returned list can be shorter than the number of folders in theory (so don't set this too low).
 
-Loading runs in parallel: one worker subprocess per case, across roughly 80 percent of the available hardware threads. On Linux it respects the CPU affinity set by schedulers such as SLURM, so it behaves correctly on a cluster node. Note that this method returns images and segmentations only; it does not return affines.
+Loading runs in parallel: one worker subprocess per case. On Linux it respects the CPU affinity set by schedulers such as SLURM, so it behaves correctly on a cluster node. On this note, becuase some clusters use cores intead of threads, it has safe logic build in for this. If it detects less than 3 threads or 3 cores, it will simply use half of what it finds (so likely using 1 thread or 1 core, unless something very strange is going on hardware wise). Otherwise, it will use the max number of threads/cores it finds minus 1.
 
 - **`how_many_threads_available()`**
 Returns the number of hardware threads detected (the figure the worker pool is sized from). Honors SLURM cpuset limits on Linux and falls back sensibly when the OS reports nothing.

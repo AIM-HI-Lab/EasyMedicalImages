@@ -44,10 +44,10 @@ HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::st
     // img_seg_pairs default-constructed empty, so there's nothing to clear here.
     }
 
-std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path) {
+std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path, bool return_affines) {
     std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
-    _get_all_images_and_segs_from_path(all_data, /*return_affines=*/false, /*verbose_workers=*/verbose_workers);
-    return std::move(img_seg_pairs);  // move, not copy, this vector will probably be huge
+    _get_all_images_and_segs_from_path(all_data, return_affines, /*verbose_workers=*/verbose_workers);
+    return std::move(img_seg_pairs);
 }
 
 std::vector<std::string> HighLevel::go_one_level_deep(bool debug, std::string options, const std::string& directory) {

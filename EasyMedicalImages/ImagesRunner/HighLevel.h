@@ -58,8 +58,8 @@ public:
     // value -- moved out of img_seg_pairs, so the member is left empty after the
     // call (this vector can be huge; we don't want to copy it). directory_path
     // defaults to "" to mirror Python's None sentinel.
-    std::vector<std::pair<Volume, Volume>> run_on_directory(const std::string& directory_path = "");
-
+    std::vector<std::pair<Volume, Volume>> run_on_directory(const std::string& directory_path = "", bool return_affines = false);
+    
     // Generic sibling of run_on_directory: instead of just loading each case, it
     // runs a named CTImagesLibrary method (with JSON-encoded kwargs) IN PLACE inside
     // every worker, then streams the transformed volumes back. Example:

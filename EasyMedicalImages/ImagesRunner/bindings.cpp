@@ -17,6 +17,22 @@ static py::array volume_to_numpy(Volume&& v) {
     std::vector<py::ssize_t> shape(v.shape.begin(), v.shape.end());
     return py::array_t<float>(shape, buf->data(), owner);  // C-order, no copy
 }
+// 4x4 row-major float64 -> numpy (4,4). Tiny; copied, not zero-copied.
+static py::array affine_to_numpy(const std::array<double, 16>& a) {
+    py::array_t<double> arr({4, 4});
+    std::memcpy(arr.mutable_data(), a.data(), a.size() * sizeof(double));
+    return arr;
+}
+
+// One (image|seg) side -> bare ndarray, or (ndarray, affine) when asked.
+// Reads v.affine BEFORE moving v.data (volume_to_numpy only moves .data).
+static py::object side_to_py(Volume&& v, bool with_affine) {
+    if (!with_affine)
+        return volume_to_numpy(std::move(v));
+    py::array aff  = affine_to_numpy(v.affine);
+    py::array data = volume_to_numpy(std::move(v));
+    return py::make_tuple(std::move(data), std::move(aff));
+}
 
 PYBIND11_MODULE(_core, m) {
     m.doc() = "C++ core for EasyMedicalImages";
@@ -27,23 +43,23 @@ PYBIND11_MODULE(_core, m) {
             py::arg("image_path")           = "image.nii.gz",
             py::arg("seg_path")             = "tumor_segmentation_v2.nii.gz",
             py::arg("verbose")              = false,
-            py::arg("thread_deadline_time") = 66.0f,
+            py::arg("thread_deadline_time") = 100.1f,
             py::arg("verbose_workers")      = true)
-        .def("run_on_directory",
-        [](HighLevel& self, const std::string& directory_path) {
+        .def("run_on_directory",[](HighLevel& self, const std::string& directory_path, bool return_affines) {
                 self.python_exe = py::module_::import("sys").attr("executable").cast<std::string>();
                 std::vector<std::pair<Volume, Volume>> pairs;
                 {
                     py::gil_scoped_release release;
-                    pairs = self.run_on_directory(directory_path);
+                    pairs = self.run_on_directory(directory_path, return_affines);
                 }
                 py::list out;
                 for (auto& pr : pairs)
-                    out.append(py::make_tuple(volume_to_numpy(std::move(pr.first)),
-                    volume_to_numpy(std::move(pr.second))));
-                return out;  // list[tuple[np.ndarray, np.ndarray]]
+                    out.append(py::make_tuple(side_to_py(std::move(pr.first),  return_affines),
+                                              side_to_py(std::move(pr.second), return_affines)));
+                return out;  // off: list[(img,seg)]; on: list[((img,aff),(seg,aff))]
              },
-             py::arg("directory_path") = "")
+             py::arg("directory_path") = "",
+             py::arg("return_affines") = false)
         .def("processed_run_on_directory",
         [](HighLevel& self, const std::string& operation, py::dict op_kwargs,
            const std::string& directory_path, bool return_affines) {
