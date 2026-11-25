@@ -2,8 +2,14 @@ name: Publish to PyPI
 
 on:
   push:
+    # Pushing to main is a dry run: builds + tests every wheel, publishes nothing.
+    branches: [main]
+    # Pushing a v* tag builds, tests, and publishes to PyPI.
     tags:
       - "v*"
+  # Also dry runs.
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build_wheels:
@@ -16,9 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4.0.0   # pin; bump when you release
-        env:
-          CIBW_TEST_COMMAND: 'python -c "import EasyMedicalImages; EasyMedicalImages.HighLevel"'
+        uses: pypa/cibuildwheel@v4.3.5   # pin; bump when you release (>=4.2.0 needed for CPython 3.15)
+        # test-command lives in pyproject.toml so local cibuildwheel runs use it too.
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}
@@ -39,6 +44,8 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: [build_wheels, build_sdist]
+    # Only a pushed v* tag publishes; PRs and manual runs stop after testing.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write

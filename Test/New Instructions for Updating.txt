@@ -1,0 +1,52 @@
+RELEASING EasyMedicalImages  (PowerShell, from W:\Shared\LRI\Labs\AIM-HI-Lab\code\honnn2\EasyMedicalImages)
+Replace X.Y.Z with the version. Only pushing a vX.Y.Z tag publishes to PyPI; pushing to main just builds and tests.
+
+0. One-time setup
+```
+git config --global --add safe.directory '%(prefix)///CC.AD.CCHS.NET/WORLD/Shared/LRI/Labs/AIM-HI-Lab/code/honnn2/EasyMedicalImages'
+py -V:3.15t -m pip install "numpy>=2.5.2" "nibabel>=5.4.2" "nilearn>=0.13.1" "scipy>=1.17.1" "matplotlib>=3.11.2" "pydicom>=3.0.2" "tqdm>=4.67.3"
+```
+(3.15t gets every dependency except SimpleITK, which has no Windows 3.15t wheel.)
+
+1. Set version = "X.Y.Z" in pyproject.toml
+
+2. Install and test locally
+```
+py -V:3.14  -m pip install -e . --no-build-isolation -C sdist.inclusion-mode=manual -C "build-dir=$env:LOCALAPPDATA\emi-build\{wheel_tag}"
+py -V:3.15  -m pip install -e . --no-build-isolation -C sdist.inclusion-mode=manual -C "build-dir=$env:LOCALAPPDATA\emi-build\{wheel_tag}"
+py -V:3.15t -m pip install -e . --no-build-isolation --no-deps -C sdist.inclusion-mode=manual -C "build-dir=$env:LOCALAPPDATA\emi-build\{wheel_tag}"
+py -V:3.14  Test\wheel_smoke.py      # each should print "EasyMedicalImages X.Y.Z"
+py -V:3.15  Test\wheel_smoke.py
+py -V:3.15t Test\wheel_smoke.py
+```
+(--no-build-isolation avoids the "Could NOT find Python" error; the two -C flags avoid the 15+ minute hang.)
+
+3. Push to main (dry run: builds and tests everything, publishes nothing)
+```
+git add EasyMedicalImages Test pyproject.toml README.md CMakeLists.txt .github .gitignore
+git status                           # only .idea\ should be left unstaged
+git commit -m "Release X.Y.Z: <what changed>"
+git push origin main
+```
+Wait for the green check on the Actions tab. "Publish to PyPI" should say skipped, and the build logs should show
+23 "EasyMedicalImages X.Y.Z" lines. If something fails: fix it, commit, push to main again.
+
+4. Release (this publishes to PyPI)
+```
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+5. Check it (PyPI should have 23 .whl files + 1 .tar.gz)
+```
+python -m venv $env:TEMP\emi-check
+& $env:TEMP\emi-check\Scripts\python -m pip install easy-medical-images==X.Y.Z
+& $env:TEMP\emi-check\Scripts\python Test\wheel_smoke.py
+```
+
+If the tag build fails and X.Y.Z is NOT on PyPI: delete the tag, fix it and push to main (step 3), then redo step 4.
+```
+git tag -d vX.Y.Z
+git push origin :refs/tags/vX.Y.Z
+```
+If X.Y.Z IS on PyPI (even partly), that number is used up: bump the version and start over.

@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <future>
 #include <chrono>
+#include <sstream>
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
@@ -44,10 +45,11 @@ HighLevel::HighLevel(std::string path_to_folder, std::string image_path, std::st
     // img_seg_pairs default-constructed empty, so there's nothing to clear here.
     }
 
-std::vector<std::pair<Volume, Volume>> HighLevel::run_on_directory(const std::string& directory_path, bool return_affines) {
+RunResult HighLevel::run_on_directory(const std::string& directory_path, bool return_affines) {
     std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
-    _get_all_images_and_segs_from_path(all_data, return_affines, /*verbose_workers=*/verbose_workers);
-    return std::move(img_seg_pairs);
+    // Returned straight from the fan-out (not staged in img_seg_pairs) so two
+    // concurrent calls on one HighLevel can't clobber or steal each other's results.
+    return _fan_out_workers(all_data, return_affines, verbose_workers, /*operation=*/"", /*op_kwargs_json=*/"{}");
 }
 
 std::vector<std::string> HighLevel::go_one_level_deep(bool debug, std::string options, const std::string& directory) {
@@ -287,9 +289,32 @@ namespace {
         Volume seg;
     };
 
+    // Reason text for a worker that finished (no timeout) without delivering both
+    // volumes. rc is reap()'s return value. (ostringstream, not std::format:
+    // std::format isn't available on the macOS 10.15 deployment target.)
+    std::string describe_worker_exit(int rc) {
+        std::ostringstream why;
+        if (rc == 0) {
+            why << "worker exited cleanly but its output could not be read";
+#ifdef _WIN32
+        } else if (static_cast<unsigned>(rc) >= 0xC0000000u) {      // NTSTATUS crash code
+            why << "worker crashed (exit code 0x" << std::hex << std::uppercase << static_cast<unsigned>(rc) << ")";
+#else
+        } else if (rc == -999) {
+            why << "worker ended abnormally";
+        } else if (rc < 0) {                                        // reap() encodes signals as -signo
+            why << "worker was killed by signal " << -rc;
+            if (-rc == SIGKILL) why << " (often the out-of-memory killer)";
+#endif
+        } else {
+            why << "worker exited with code " << rc;
+        }
+        return why.str();
+    }
+
 }
 
-void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json) {
+RunResult HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json) {
     const auto kLoadTimeout = std::chrono::duration<float>(this->thread_deadline_time);
     const int  hw = how_many_threads_available();
     const long want = (hw < 3) // the below is a part of this line but was broken up for readability
@@ -304,6 +329,9 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
     // all_data is a huge list of all of the patient folder names. Each thread to 1 independent folder. This is to fight race conditions
     // input order is preserved.
     std::vector<std::optional<std::pair<Volume, Volume>>> results(all_data.size());
+    // Same one-slot-per-case scheme for failures: each worker writes only its own
+    // slot, so no lock is needed.
+    std::vector<std::optional<std::string>> fail_reasons(all_data.size());
 
     for (size_t batch_start = 0; batch_start < all_data.size(); batch_start += batch_size) {
         std::vector<std::thread> workers;
@@ -315,7 +343,7 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
             if (verbose_workers)
                 std::cout << "Worker " << i << " -> " << path_str << '\n';
 
-            workers.emplace_back([this, path_str, idx, &results, verbose_workers, return_affines, kLoadTimeout, operation, op_kwargs_json]() {
+            workers.emplace_back([this, path_str, idx, &results, &fail_reasons, verbose_workers, return_affines, kLoadTimeout, operation, op_kwargs_json]() {
                 // argv (not a shell string): posix_spawnp/CreateProcess take it
                 // directly, so paths with spaces need no quoting and SIGKILL
                 // runs on Python itself rather than a /bin/sh wrapper.
@@ -346,6 +374,7 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
                 Subprocess sp;
                 if (!spawn(argv, sp)) {
                     std::cerr << "Failed to launch Python for " << path_str << '\n';
+                    fail_reasons[idx] = "could not start the Python worker";
                     return;
                 }
 
@@ -363,12 +392,15 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
 
                 if (reader.wait_for(kLoadTimeout) != std::future_status::ready) {
                     // Over budget: kill the tree (-> stdout closes -> the read
-                    // hits EOF), join the reader, reap, and move on. The slot
-                    // stays empty, so this case is simply skipped.
+                    // hits EOF), join the reader, reap, and move on. The result
+                    // slot stays empty and the failure slot says why.
                     std::cerr << "Timeout (>" << kLoadTimeout.count() << "s): " << path_str << " -- killing subprocess and skipping\n";
                     kill_child(sp);
                     reader.wait();                    // returns promptly once EOF unblocks the read
                     reap(sp);
+                    std::ostringstream why;
+                    why << "timed out after " << kLoadTimeout.count() << "s (thread_deadline_time); worker killed";
+                    fail_reasons[idx] = why.str();
                     return;
                 }
 
@@ -381,6 +413,7 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
                     results[idx] = std::make_pair(std::move(r.img), std::move(r.seg));
                 } else {
                     std::cerr << "Python failed/unreadable for " << path_str << " (rc=" << rc << ")\n";
+                    fail_reasons[idx] = describe_worker_exit(rc);
                 }
             });
         }
@@ -389,27 +422,38 @@ void HighLevel::_fan_out_workers(const std::vector<std::string>& all_data, bool 
             worker.join();
     }
 
-    // Compact to a dense list of successes, in order, matches Python's img_seg_pairs.
-    img_seg_pairs.clear();
-    img_seg_pairs.reserve(results.size());
-    for (auto& slot : results)
-        if (slot) img_seg_pairs.push_back(std::move(*slot));
+    // Compact to dense, in-order lists of successes (matches Python's img_seg_pairs)
+    // and failures. Local to this call (not a member) -- see run_on_directory.
+    // Every folder goes into exactly one list: a slot with neither a result nor a
+    // reason would be a bug in the worker above, and is still reported, not lost.
+    RunResult out;
+    out.pairs.reserve(results.size());
+    for (size_t i = 0; i < results.size(); ++i) {
+        if (results[i])
+            out.pairs.push_back(std::move(*results[i]));
+        else
+            out.failures.push_back({all_data[i], fail_reasons[i] ? std::move(*fail_reasons[i])
+                                                                 : std::string("no result recorded (internal error)")});
+    }
 
-    std::cout << "Collected " << img_seg_pairs.size() << " / " << all_data.size() << " cases\n";
+    std::cout << "Collected " << out.pairs.size() << " / " << all_data.size() << " cases\n";
+    return out;  // moved (NRVO), not copied
 }
 
 // Backwards-compatible thin wrapper: the original plain-load fan-out is just the
 // generic one with no operation (so the worker argv is byte-for-byte what it was).
+// Still fills the img_seg_pairs member for C++ callers that read it afterwards;
+// the Python-facing run methods don't go through here. Failures are only
+// printed to stderr on this path (it has no way to hand them back).
 void HighLevel::_get_all_images_and_segs_from_path(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers) {
-    _fan_out_workers(all_data, return_affines, verbose_workers, /*operation=*/"", /*op_kwargs_json=*/"{}");
+    img_seg_pairs = _fan_out_workers(all_data, return_affines, verbose_workers, /*operation=*/"", /*op_kwargs_json=*/"{}").pairs;
 }
 
 // Generic sibling of run_on_directory (see header). Same directory walk + fan-out,
 // but each worker applies `operation` in place before streaming its volumes back.
-std::vector<std::pair<Volume, Volume>> HighLevel::processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
+RunResult HighLevel::processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json, const std::string& directory_path, bool return_affines) {
     std::vector<std::string> all_data = go_one_level_deep(/*debug=*/false, "folders", directory_path);
-    _fan_out_workers(all_data, return_affines, verbose_workers, operation, op_kwargs_json);
-    return std::move(img_seg_pairs);  // moved out; member left empty (this vector can be huge)
+    return _fan_out_workers(all_data, return_affines, verbose_workers, operation, op_kwargs_json);
 }
 
 int run_test() {

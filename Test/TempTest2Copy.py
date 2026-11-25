@@ -13,6 +13,8 @@ import numpy as np
 import EasyMedicalImages as EMI
 import time as tym
 
+print(f"Using EasyMedicalImages {EMI.__version__} from {EMI.__file__}")
+
 
 def same_volume(a, b):
     # HighLevel returns float32; CTImagesLibrary keeps float64. Compare at the

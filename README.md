@@ -9,37 +9,12 @@ This is a library that focuses on taking CT scans (as NIFTI Images) and transfor
 Requires Python 3.12 or newer.
 
 ```bash
-pip install easy-medical-images
+pip3 install easy-medical-images
 ```
 
 The high-level batch loader (`HighLevel`) is a compiled C++ extension. The published wheels include it, so a normal `pip install` is all you need.
 
-## Expected data layout
-Each case lives in its own folder containing an image and a segmentation. By default these are named `image.nii.gz` and `tumor_segmentation_v2.nii.gz`, but you can override both names (see `image_path` and `seg_path` below).
-
-```
-parent_folder/
-├── case_0001/
-│   ├── image.nii.gz
-│   └── tumor_segmentation_v2.nii.gz
-├── case_0002/
-│   ├── image.nii.gz
-│   └── tumor_segmentation_v2.nii.gz
-└── ...
-```
-
-#### Remeber to put the proper root for the input directory path! For example, if your files live on a cloud.
-
-`CTImagesLibrary` operates on a single case folder. `HighLevel` operates on a parent folder and loads every case folder inside it.
-
-## How it fits together
-Generally, this library assumes the user wants a batch of something rather than a specific image. This is reflected in how you first load in your specific instance, and then can add modifiers how you wish.
-
-There are two main sub libraries:
-
-1. `HighLevel`: point it at a parent directory and it loads every case in parallel (after the method 'run_on_directory' is called on the instance). This will return a list of `(image, seg)` array pairs. Use this to pull a whole dataset into memory quickly.
-2. `CTImagesLibrary`: load one case and get the full manipulation toolkit (slicing, cropping, reorientation, display). Use this when you want to work with an individual scan.
-   See below for examples.
+Python 3.14 and 3.14t are supported on all platforms. Python 3.15 is also supported on all platforms, but python 3.15t is not supported on Windows at this time due to a required dependency not supporting it yet.
 
 ## Quick start: load a whole directory
 
@@ -97,6 +72,33 @@ print(case.mutated_img_data.shape)  # smaller now
 ```
 
 As stated earlier, building `CTImagesLibrary` automatically: changes the working directory into `path_to_folder`, loads the image and segmentation, and builds isotropic, RAS-reoriented copies. After construction, both the raw and processed arrays are available as attributes via `your_instancename.raw_img_data`, or for seg `your_instancename.raw_seg_data`.
+
+## Expected data layout
+Each case lives in its own folder containing an image and a segmentation. By default these are named `image.nii.gz` and `tumor_segmentation_v2.nii.gz`, but you can override both names (see `image_path` and `seg_path` below).
+
+```
+parent_folder/
+├── case_0001/
+│   ├── image.nii.gz
+│   └── tumor_segmentation_v2.nii.gz
+├── case_0002/
+│   ├── image.nii.gz
+│   └── tumor_segmentation_v2.nii.gz
+└── ...
+```
+
+#### Remeber to put the proper root for the input directory path! For example, if your files live on a cloud.
+
+`CTImagesLibrary` operates on a single case folder. `HighLevel` operates on a parent folder and loads every case folder inside it.
+
+## More detail on batch loading vs single image
+Generally, this library assumes the user wants a batch of something rather than a specific image. This is reflected in how you first load in your specific instance, and then can add modifiers how you wish.
+
+There are two main sub libraries:
+
+1. `HighLevel`: point it at a parent directory and it loads every case in parallel (after the method 'run_on_directory' is called on the instance). This will return a list of `(image, seg)` array pairs. Use this to pull a whole dataset into memory quickly.
+2. `CTImagesLibrary`: load one case and get the full manipulation toolkit (slicing, cropping, reorientation, display). Use this when you want to work with an individual scan.
+   See below for examples.
 
 ## Affines and voxel spacing
 The 4x4 affine is what maps voxel indices to physical (mm) space, so it is the key to any real-world measurement: voxel spacing, distances, and volumes. Both sublibraries can hand you the affines; from there the spacing is a one-liner.
@@ -265,3 +267,5 @@ methods:
 The processed arrays (`mutated_img_data` and friends) are in proper RAS orientation. The slices produced by `display_slice` and `return_slice` add a 90-degree flip on the Z axis so they read naturally in matplotlib (similar to how ITK displays them). In short: use the instance arrays when you need correct anatomical orientation, and use `return_slice` when you want something that looks right on screen.
 
 PyPI link: [PyPI](https://pypi.org/project/easy-medical-images/)
+
+GitHub repo: [GitHub](https://github.com/AIM-HI-Lab/EasyMedicalImages)

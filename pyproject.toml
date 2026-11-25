@@ -4,21 +4,21 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "easy-medical-images"
-version = "1.1.6"
+version = "1.2.0"
 description = "The easy way to manipulate medical images."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "AIM-HI-LAB" }]
 dependencies = [
-    "numpy>=2.4.6",
+    "numpy>=2.5.2",
     "nibabel>=5.4.2",
     "nilearn>=0.13.1",
     "scipy>=1.17.1",
-    "matplotlib>=3.10.9",
+    "matplotlib>=3.11.2",
     "pydicom>=3.0.2",
     "tqdm>=4.67.3",
-    "SimpleITK>=2.5.5"
+    "SimpleITK>=2.5.8"
     # add anything else your imports use, e.g. "scipy", "pydicom"
 ]
 
@@ -27,6 +27,7 @@ classifiers=[
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python",
     "Programming Language :: C++",
     "Operating System :: Microsoft :: Windows",
@@ -35,7 +36,7 @@ classifiers=[
 
     #Free-threading (PEP 703+)
     #    "Programming Language :: Python :: Free Threading",
-    "Programming Language :: Python :: Free Threading :: 1 - Unstable",
+    "Programming Language :: Python :: Free Threading :: 3 - Stable",
 
     #Maturity
     "Development Status :: 5 - Production/Stable",
@@ -58,6 +59,11 @@ classifiers=[
 #    "Framework :: Matplotlib"
 ]
 
+[project.urls]
+Homepage = "https://github.com/AIM-HI-Lab/EasyMedicalImages"
+Repository = "https://github.com/AIM-HI-Lab/EasyMedicalImages"
+Issues = "https://github.com/AIM-HI-Lab/EasyMedicalImages/issues"
+
 [tool.setuptools.packages.find]
 include = ["EasyMedicalImages*"]
 
@@ -74,8 +80,15 @@ editable.verbose = true
 args = ["-G", "Ninja"]
 
 [tool.cibuildwheel]
-build = ["cp312-*", "cp313-*", "cp314-*"]
-skip = ["*-musllinux*"]
+# "cp314-*" does not match "cp314t-*", so each free-threaded version is listed.
+build = ["cp312-*", "cp313-*", "cp314-*", "cp314t-*", "cp315-*", "cp315t-*"]
+# 3.15t is built for Linux and macOS only. SimpleITK has no cp315t win_amd64 wheel
+# yet (only an sdist that builds all of ITK), so Windows 3.15t users couldn't
+# install our dependencies anyway. Drop "cp315t-win*" once SimpleITK publishes
+# simpleitk-*-cp315-cp315t-win_amd64.whl.
+skip = ["*-musllinux*", "cp315t-win*"]
+# Runs against every built wheel, locally and in CI; prints the installed version.
+test-command = 'python "{project}/Test/wheel_smoke.py"'
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]

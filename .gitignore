@@ -235,3 +235,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# cibuildwheel local output
+wheelhouse/
+
+# Personal release notes (local only, not for GitHub/PyPI)
+# Test/New Instructions for Updating.txt

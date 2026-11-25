@@ -3,6 +3,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 from .ImagesRunner.CTImagesLibrary import CTImagesLibrary
 from .ImagesRunner.MRIImagesLibrary import MRIImagesLibrary
+from .errors import CaseFailure, CaseFailureError, CaseFailureWarning
 
 try:
     __version__ = version("easy-medical-images")
@@ -14,6 +15,9 @@ __all__ = [
     "MRIImagesLibrary",
     "HighLevel",
     "go_one_level_deep",
+    "CaseFailure",
+    "CaseFailureError",
+    "CaseFailureWarning",
     "__version__",
 ]
 

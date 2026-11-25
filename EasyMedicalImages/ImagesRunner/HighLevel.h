@@ -45,6 +45,20 @@ struct Volume {
     std::array<double, 16>  affine{};// 4x4 row-major; all-zero unless affines were requested
 };
 
+// One case folder that didn't make it into the results, and why.
+struct CaseFailure {
+    std::string folder;
+    std::string reason;
+};
+
+// What a run hands back. Every input folder lands in exactly one of the two
+// lists, so nothing is dropped without a record; the caller decides what a
+// failure means (the Python binding warns, raises, or ignores -- see on_error).
+struct RunResult {
+    std::vector<std::pair<Volume, Volume>> pairs;     // loaded cases, folder order
+    std::vector<CaseFailure>               failures;  // failed cases, folder order
+};
+
 class HighLevel {
 public:
     // One (image, seg) pair per case. pair, NOT variant: each case holds BOTH
@@ -54,11 +68,12 @@ public:
 
     explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=100.1, bool verbose_workers=true);
 
-    // Runs the whole fan-out and hands back the collected (image, seg) pairs by
-    // value -- moved out of img_seg_pairs, so the member is left empty after the
-    // call (this vector can be huge; we don't want to copy it). directory_path
-    // defaults to "" to mirror Python's None sentinel.
-    std::vector<std::pair<Volume, Volume>> run_on_directory(const std::string& directory_path = "", bool return_affines = false);
+    // Runs the whole fan-out and hands back the collected (image, seg) pairs plus
+    // any failed cases, by value (moved, never copied -- this can be huge). Each
+    // call builds its own result and doesn't touch img_seg_pairs, so it's safe to
+    // call run_on_directory / processed_run_on_directory concurrently on one
+    // instance. directory_path defaults to "" to mirror Python's None sentinel.
+    RunResult run_on_directory(const std::string& directory_path = "", bool return_affines = false);
     
     // Generic sibling of run_on_directory: instead of just loading each case, it
     // runs a named CTImagesLibrary method (with JSON-encoded kwargs) IN PLACE inside
@@ -66,7 +81,7 @@ public:
     //     processed_run_on_directory("apply_seg_crop_to_image", R"({"img_or_seg":"both","pad":5})");
     // Backwards compatible: run_on_directory / _get_all_images_and_segs_from_path
     // are unchanged; this is a separate entry point. Nothing touches disk.
-    std::vector<std::pair<Volume, Volume>> processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json = "{}", const std::string& directory_path = "", bool return_affines = false);
+    RunResult processed_run_on_directory(const std::string& operation, const std::string& op_kwargs_json = "{}", const std::string& directory_path = "", bool return_affines = false);
 
     // Mirrors os.scandir + entry.is_dir()/is_file() filtering.
     // options is one of "folders", "files", "all". A non-empty directory_path
@@ -75,20 +90,26 @@ public:
 
     // Fans out one CTImagesLibrary subprocess per case across a thread pool,
     // reads each result back over a pipe (no disk), and collects the (image,
-    // seg) pairs into img_seg_pairs.
+    // seg) pairs into img_seg_pairs. C++-only legacy entry point: it writes that
+    // member, so unlike the run methods it is NOT safe to call concurrently.
     void _get_all_images_and_segs_from_path(const std::vector<std::string>& all_data,bool return_affines = false,bool verbose_workers=true);
 
     int how_many_threads_available();
 
     float thread_deadline_time = 100.1f;
 
+    // Interpreter the workers launch. The Python binding sets it once, at
+    // construction, from sys.executable; after that it is only read (worker
+    // threads of several concurrent calls may be reading it at once).
     std::string python_exe;
 
 private:
     // Shared fan-out core behind both _get_all_images_and_segs_from_path (operation
     // == "") and processed_run_on_directory. When operation is non-empty the
     // worker argv gains: --operation <operation> --op_kwargs <op_kwargs_json>.
-    void _fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json);
+    // Returns the successful cases and the failures, both in input order; writes
+    // no members.
+    RunResult _fan_out_workers(const std::vector<std::string>& all_data, bool return_affines, bool verbose_workers, const std::string& operation, const std::string& op_kwargs_json);
 
     std::string path_to_folder;
     std::string hl_img_path;
