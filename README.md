@@ -174,7 +174,7 @@ HighLevel(
     image_path="image.nii.gz",
     seg_path="tumor_segmentation_v2.nii.gz",
     verbose=False,
-    thread_deadline_time=100.1,
+    thread_deadline_time=244.4,
     verbose_workers=True
 )
 ```

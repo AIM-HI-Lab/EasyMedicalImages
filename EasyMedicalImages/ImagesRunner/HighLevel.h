@@ -66,7 +66,7 @@ public:
     // degenerate -- two identical alternatives you couldn't tell apart.)
     std::vector<std::pair<Volume, Volume>> img_seg_pairs;
 
-    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=100.1, bool verbose_workers=true);
+    explicit HighLevel(std::string path_to_folder, std::string image_path = "image.nii.gz", std::string seg_path   = "tumor_segmentation_v2.nii.gz", bool verbose = false, float thread_deadline_time=244.4f, bool verbose_workers=true);
 
     // Runs the whole fan-out and hands back the collected (image, seg) pairs plus
     // any failed cases, by value (moved, never copied -- this can be huge). Each
@@ -96,7 +96,7 @@ public:
 
     int how_many_threads_available();
 
-    float thread_deadline_time = 100.1f;
+    float thread_deadline_time = 244.4f;
 
     // Interpreter the workers launch. The Python binding sets it once, at
     // construction, from sys.executable; after that it is only read (worker

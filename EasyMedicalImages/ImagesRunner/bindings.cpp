@@ -121,7 +121,7 @@ PYBIND11_MODULE(_core, m, py::mod_gil_not_used()) {
             py::arg("image_path")           = "image.nii.gz",
             py::arg("seg_path")             = "tumor_segmentation_v2.nii.gz",
             py::arg("verbose")              = false,
-            py::arg("thread_deadline_time") = 100.1f,
+            py::arg("thread_deadline_time") = 244.4f,
             py::arg("verbose_workers")      = true)
         .def("run_on_directory",[](HighLevel& self, const std::string& directory_path, bool return_affines,
                                    const std::string& on_error) {

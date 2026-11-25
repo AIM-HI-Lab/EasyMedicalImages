@@ -26,7 +26,7 @@ def same_volume(a, b):
 # 1) Batch load the whole directory.
 parent = input("Path to the FOLDER OF cases: ").strip()
 start=tym.time()
-batch = EMI.HighLevel(path_to_folder=parent, verbose=True, verbose_workers=True, thread_deadline_time=180).run_on_directory()
+batch = EMI.HighLevel(path_to_folder=parent, verbose=True, verbose_workers=True, thread_deadline_time=244.4).run_on_directory()
 print(f"\n==== RESULT ====")
 print(f"Total time: {tym.time() - start:.2f} s")
 print(f"Batch type: {type(batch)}")
